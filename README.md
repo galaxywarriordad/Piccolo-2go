@@ -88,7 +88,7 @@ Piccolo-2go/
         └── src/
             ├── dtb-select.c           # Hardware revision & panel DTB selector (G350 / R36S)
             └── ax-powerd.c            # Low-overhead battery, thermal & power button daemon
-     
+```     
 ---
 
 ## Silicon Preservation Society Ecosystem
