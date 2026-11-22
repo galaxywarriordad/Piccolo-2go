@@ -79,11 +79,14 @@ The Rockchip **RK3326** pairs four dual-issue **in-order ARM Cortex-A35** cores 
 ### 5. Dual SanDisk Extreme PRO Storage Architecture (`64 GB TF1` + `128 GB TF2`)
 
 * **TF1 — OS & Save Slot (`64 GB` SanDisk Extreme PRO `A2` / `V30`):**
-  * `p1` (`FAT32`, `256 MB`): Boot partition housing U-Boot artifacts, pruned `linux-rk3326.fragment` kernel `Image` (`~110 MB` LPDDR3 reclaimed by disabling unused `VPU`, `ISP`, `RGA`, `Crypto`, `I2S1/TDM`, `PDM`, `Bluetooth`, and `IPv6`), `boot.ini`, and `/boot/dtbs/`.
-  * `p2` (`SquashFS zstd`, `< 180 MB`): Immutable, read-only root filesystem—immune to corruption on sudden power loss.
+  * `p1` (`FAT32`, `256 MB`): Boot partition housing U-Boot artifacts, `LZ4`-compressed pruned `linux-rk3326.fragment` kernel `Image` (`< 180 ms` decompression, `~110 MB` LPDDR3 reclaimed), `boot.ini`, and `/boot/dtbs/`.
+  * `p2` (`SquashFS zstd`, `128 KB` blocks, `< 160 MB`): Immutable, read-only root filesystem—immune to corruption on sudden power loss.
   * `p3` (`ext4`, `~59 GB`): Auto-expanded on first boot (`S02piccolo-2go-storage`) for persistent save states, shader caches, and local fallback `/userdata`.
 * **TF2 — Portable Media Slot (`128 GB` SanDisk Extreme PRO `A2` / `V30`):**
-  * `p1` (`exFAT` / `ext4`, `~119 GB`): Dedicated media card automatically bound to `/userdata/{roms,music,bios}` on boot—allowing instant drag-and-drop of ROMs, Amiga WHDLoad sets, lossless `.flac` / `DoP` albums, and `.mod`/`.xm`/`.s3m`/`.it` trackers from any PC without touching `TF1`.
+  * `p1` (`exFAT` / `ext4`, `~119 GB`): Dedicated media card automatically bound to `/userdata/{roms,music,bios}` on boot—streaming compressed `.chd` (CD32/PS1), `.lha`/`.zip`, lossless `.flac` / `DoP` albums, and `.mod`/`.xm`/`.s3m`/`.it` trackers with `~50 MB/s` effective throughput.
+* **Memory & `512 MB` `LZ4` ZRAM Discipline (`1 GB LPDDR3`):**
+  * Configures a **`512 MB` `lz4`-compressed ZRAM swap device** (`~650 MB/s` in-order Cortex-A35 decompression, `vm.swappiness=120`, `vm.page-cluster=0`, `vm.watermark_boost_factor=0`), bounded `/tmp` (`32 MB`) and `/run` (`16 MB`) `tmpfs`, and a `64 MiB` `FLAC_AX` `SingleFile` preload cap—delivering `~1.18 GB` effective working memory with zero microSD flash wear.
+
 ---
 
 ## 📁 Repository Structure
