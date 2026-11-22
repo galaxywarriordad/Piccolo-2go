@@ -1,0 +1,21 @@
+menu "Piccolo-2go ARM64 RK3326 Handheld Appliance"
+
+config BR2_PACKAGE_PICCOLO_2GO_BASE
+	bool "Piccolo-2go RK3326 Runtime & Hardware Scripts (BATLEXP G350 / R36S)"
+	default y
+	select BR2_PACKAGE_AX_SDK
+	select BR2_PACKAGE_FLAC_AX
+	select BR2_PACKAGE_AMIBERRY_AX
+	select BR2_PACKAGE_HATARI_AX
+	select BR2_PACKAGE_BLASTEM_AX
+	select BR2_PACKAGE_DTC
+	help
+	  Deterministic ARM64 (4x Cortex-A35) handheld appliance layer for the
+	  BATLEXP G350 and R36S with 1:2:1 core isolation, 1024 MB LZ4 ZRAM,
+	  KMS/DRM + Mali-G31 Panfrost GLES 3.0 direct scanout, dual SanDisk
+	  Extreme PRO (64 GB TF1 + 128 GB TF2) storage, early HiBy FC3 1.3 Vrms
+	  USB-C OTG DAC gain staging, and runtime DTB panel/calibration tools.
+
+source "$BR2_EXTERNAL_PICCOLO_2GO_PATH/package/piccolo-2go-tools/Config.in"
+
+endmenu
