@@ -21,9 +21,6 @@
 
 ---
 
-## ⚙️ Architecture & Topology (Optimised with AX Tech)
-
-
 ## ⚙️ Fixed-Hardware Topology & Silicon Specification (Optimised with AX Tech)
 
 `Piccolo-2go` treats the **BATLEXP G350** and **R36S** as a closed, deterministic fixed-hardware appliance rather than a general-purpose Linux PC—mapping every physical bus, interrupt line, and execution plane onto the **Rockchip RK3326** silicon:
