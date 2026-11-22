@@ -23,43 +23,70 @@
 
 ## ⚙️ Architecture & Topology (Optimised with AX Tech)
 
-### 1. `1:2:1` RK3326 Silicon & IRQ Topology
 
-The Rockchip **RK3326** pairs four dual-issue **in-order ARM Cortex-A35 (`1.5 GHz`)** cores with a shared `256 KB` L2 cache and a `32-bit` `1 GB LPDDR3-1600` (`~6.4 GB/s`) memory bus. Because in-order cores stall immediately on cache thrashing and unpinned interrupts, `Piccolo-2go` partitions the SoC at boot via tickless kernel isolation (`isolcpus=0,1,2 nohz_full=0,1,2 rcu_nocbs=0,1,2`) and `S01piccolo-2go-isolate`:
+## ⚙️ Fixed-Hardware Topology & Silicon Specification (Optimised with AX Tech)
 
-| Core | Affinity Mask | Scheduler & Governor | Pinned Subsystems & Hardware IRQs |
+`Piccolo-2go` treats the **BATLEXP G350** and **R36S** as a closed, deterministic fixed-hardware appliance rather than a general-purpose Linux PC—mapping every physical bus, interrupt line, and execution plane onto the **Rockchip RK3326** silicon:
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                  FIXED-HARDWARE APPLIANCE TOPOLOGY — BATLEXP G350 / R36S               │
+│                             Rockchip RK3326 (1.5 GHz) + 1 GB LPDDR3                    │
+│                                                                                        │
+│  [ Core 0 (0x01) ] ──► SCHED_FIFO 80 ALSA S32_LE + DWC2 OTG / I2S0 / GPIO+SARADC IRQs │
+│  [ Core 1 (0x02) ] ──► Mali-G31 MP2 (Panfrost GLES 3.0) ──► VOP ──► 640×480 DSI LCD    │
+│  [ Core 2 (0x04) ] ──► Deterministic 68k / Z80 / MIPS JIT & DSP Worker (L1 Cache Hot)  │
+│  [ Core 3 (0x08) ] ──► SDMMC0/1 DMA IRQs + 384 MB zstd ZRAM + 64 MiB FLAC Preload      │
+├───────────────────────────────────────────┬────────────────────────────────────────────┤
+│        AUDIO & USB-C OTG SUBSYSTEM        │        DUAL SANDISK EXTREME PRO STORAGE    │
+│  • DWC2 USB-C OTG (Core 0 IRQ)            │  • TF1 (64 GB A2/V30 — OS & Save Slot)     │
+│    └─► Early HiBy FC3 (ES9281AC Pro)      │     ├── p1: BOOT (FAT32, 256 MB, DTBs)     │
+│        1.3 Vrms / 70 mW | S32_LE & DoP    │     ├── p2: ROOTFS (SquashFS zstd, <180MB) │
+│  • I2S0 Fallback ──► RK817 PMIC Codec     │     └── p3: STORAGE (ext4, ~59 GB auto)    │
+│    (3.5 mm Stereo Jack + 1W Mono Speaker) │  • TF2 (128 GB A2/V30 — Media Library)     │
+│  • Controllers: GPIO Matrix + 10-bit ADC  │     └── p1: PICCOLO_MEDIA (exFAT/ext4)     │
+│    (D-Pad, ABXY, L1/L2, R1/R2, Dual Stick)│         /roms, /music (FLAC/MOD), /bios    │
+└───────────────────────────────────────────┴────────────────────────────────────────────┘
+```
+
+### 1. CPU & `1:2:1` Core/IRQ Partition (`4× ARM Cortex-A35 @ 1.5 GHz` + `1 GB LPDDR3`)
+
+The Rockchip **RK3326** pairs four dual-issue **in-order ARM Cortex-A35** cores (`32 KB` L1-I / `32 KB` L1-D per core, `256 KB` shared L2) with a `32-bit` `1 GB LPDDR3-1600` (`~6.4 GB/s`) memory bus. Tickless kernel boot flags (`isolcpus=0,1,2 nohz_full=0,1,2 rcu_nocbs=0,1,2`) and `S01piccolo-2go-isolate` lock each core to a single hardware domain:
+
+| Core | Affinity Mask | Scheduler & Governor | Fixed Hardware Responsibility |
 | :--- | :--- | :--- | :--- |
-| **Core 0** | `0x01` | `SCHED_FIFO` (prio `80`) / `performance` | **Real-Time Audio Clock & Input Plane:** Direct ALSA `S32_LE` writer (`192`-frame / `4.00 ms` period); `DWC2` USB-C OTG (`HiBy FC3`), `I2S0` (`RK817`), and `GPIO` / `SARADC` control IRQs |
-| **Core 1** | `0x02` | `SCHED_OTHER` / `performance` | **GPU & Zero-Copy Display Plane:** Direct `KMS/DRM` page-flip submission and `Mali-G31 MP2` (`Panfrost` GLES 3.0) draw calls to the `640×480 @ 60 Hz` MIPI DSI panel |
-| **Core 2** | `0x04` | `SCHED_OTHER` / `performance` | **Deterministic Emulation JIT & DSP Plane:** 68020/AGA JIT, Z80/68k/MIPS cycle-accurate execution (`Amiberry`, `Hatari`, `BlastEm`, `PCSX-ReARMed`) with hot `32 KB` L1 caches |
-| **Core 3** | `0x08` | `SCHED_OTHER` (`nice +5`) / `schedutil` | **Housekeeping & Storage DMA Plane:** `dwmmc` (`TF1`/`TF2` SanDisk SD) IRQs, `384 MB` `zstd` ZRAM, `FLAC_AX` `64 MiB` `SingleFile` RAM preloader, `ax_appliance_tui`, and `ax-powerd` |
+| **Core 0** | `0x01` | `SCHED_FIFO` (prio `80`) / `performance` | **Real-Time Audio Clock & Controller IRQ Plane:** Direct ALSA `S32_LE` writer (`192`-frame / `4.00 ms` period); `DWC2` USB-C OTG (`HiBy FC3`), `I2S0` (`RK817`), and `GPIO` / `SARADC` control IRQs |
+| **Core 1** | `0x02` | `SCHED_OTHER` / `performance` | **GPU Submission & Display Scanout Plane:** Drives **Mali-G31 MP2** (`Panfrost` OpenGL ES 3.0) draw calls and atomic `KMS/DRM` page flips to the `640×480` panel |
+| **Core 2** | `0x04` | `SCHED_OTHER` / `performance` | **Deterministic Emulation JIT & DSP Plane:** Runs 68020/AGA JIT, Z80/68k/MIPS emulation (`Amiberry`, `Hatari`, `BlastEm`, `PCSX-ReARMed`) with zero cache eviction |
+| **Core 3** | `0x08` | `SCHED_OTHER` (`nice +5`) / `schedutil` | **Housekeeping & SD Storage DMA Plane:** `dwmmc` (`TF1`/`TF2` SanDisk SD) IRQs, `384 MB` `zstd` ZRAM (`vm.swappiness=100`, `vm.page-cluster=0`), `64 MiB` `FLAC_AX` RAM preloader, `ax_appliance_tui`, and `ax-powerd` |
 
-### 2. GPU & Zero-Copy Display Pipeline (`Mali-G31 MP2` → `VOP` → `MIPI DSI`)
+### 2. GPU & LCD Display Pipeline (`Mali-G31 MP2` → `VOP` → `3.5" 640×480 MIPI DSI IPS`)
 
-* **Direct KMS/DRM + Panfrost GLES 3.0 (`SDL_VIDEODRIVER=kmsdrm`):** Eliminates X11 and Wayland compositors completely, saving `~35–50 MB` of LPDDR3 RAM and avoiding extra `640×480×4` framebuffer composition copies.
-* **Exact `2×` Integer Scaling (`640×480` 4:3 OCA IPS):** Classic `320×240` and `320×200` systems (`Amiga`, `Atari ST`, `Mega Drive`, `PS1`) map onto the `640×480` panel with razor-sharp integer pixels, zero aspect distortion, and deterministic VBlank pacing (`60.00 Hz` / `50.00 Hz`).
-* **Pruned Multimedia Silicon (`linux-rk3326.fragment`):** Disables unused `VPU`, `ISP`, and `RGA` 2D blocks and shrinks CMA reservation to `64 MB`, freeing `~110 MB` of physical LPDDR3 for emulation and audio buffers.
+* **Hardware-Accelerated GPU Rendering (`ARM Mali-G31 MP2`):** Uses the open-source Mesa **Panfrost** OpenGL ES 3.0 driver (`BR2_PACKAGE_MESA3D_GALLIUM_DRIVER_PANFROST=y`) to execute hardware texture uploads, sharp-bilinear / `2×` integer scaling shaders, and frame composition directly on the Bifrost GPU—never falling back to CPU software rendering.
+* **Zero-Compositor Atomic Scanout (`KMS/DRM`):** Renders directly via `SDL_VIDEODRIVER=kmsdrm` into the Rockchip **Video Output Processor (VOP)** over a **4-lane MIPI DSI** bus (`640×480 @ 60.00 Hz`, `4:3` OCA full-laminated IPS display), bypassing X11/Wayland completely (`~35–50 MB` LPDDR3 saved, zero extra buffer copy).
+* **Multi-Panel Device Tree Resolution (`dtb-select`):** Resolves MIPI DSI panel initialization sequences across **BATLEXP G350** and **R36S** (`Panel 0`–`Panel 4`) hardware revisions at runtime.
 
-### 3. Bit-Perfect Audio Architecture (`HiBy FC3 1.3 Vrms` & `RK817` Fallback)
+### 3. Physical Controls & Haptic Feedback (`GPIO Matrix` + `SARADC`)
 
-* **Zero-Resampling `S32_LE` & Native DoP Pipeline:** Bypasses PulseAudio and PipeWire completely (`snd_pcm_hw_params_set_rate_resample(0)`), locking the DAC hardware clock directly to native sample rates (`44.1–384 kHz` PCM and `DSD64` `176.4 kHz` / `DSD128` `352.8 kHz` DoP) with zero USB autosuspend (`power/control="on"`).
-* **Dynamic Gain Staging & Hotplug (`99-ax-2go-otg.rules`):** Detects USB-C OTG attachment of the early **HiBy FC3 (`1.3 Vrms / 70 mW`, ESS ES9281AC Pro, VID `0x32BB`)** and applies hardware attenuator profiles (`fc3_1v3`) tailored for:
-  1. **Portable Powered Speakers / Line-Out:** `--volume 0.95` (`~1.24 Vrms` clean headroom)
-  2. **Wired Headphones (e.g., Grado SR325x, Koss Porta Pro):** `--volume 0.65`
-  3. **Sensitive In-Ear Monitors (`16–32 Ω`):** `--volume 0.35`
-* **Automatic Internal Fallback & Rail Isolation:** Hot-plugging the HiBy FC3 powers down the internal `RK817` Class-D speaker amplifier to eliminate PMIC switching noise; disconnecting the USB-C DAC seamlessly reverts ALSA routing to the internal **RK817** codec (`3.5 mm` jack + mono speaker).
+* **Zero-Latency Input Polling (`Core 0` IRQ):** Dedicated GPIO lines handle the D-pad, quiet face buttons (`A/B/X/Y`), sloped rear shoulder triggers (`L1/L2`, `R1/R2`), `Start`, `Select`, `FN`, and `KEY_POWER` (intercepted by `ax-powerd` for `1.5s`-hold safe shutdown).
+* **Dual Switch-Style Analog Thumbsticks:** Sampled via the RK3326's 4-channel `10-bit` **SARADC** controller with hardware-calibrated deadzones, alongside PWM control for the internal vibration motor.
 
-### 4. Dual SanDisk Extreme PRO Storage & `384 MB` ZRAM Discipline
+### 4. Bit-Perfect Audio DAC Subsystem (`Early HiBy FC3 1.3 Vrms` + `RK817` Fallback)
 
-* **TF1 — OS Slot (`64 GB` SanDisk Extreme PRO `A2`/`V30`):**
-  * `p1` (`FAT32`, `256 MB`): Boot partition housing U-Boot artifacts, kernel `Image`, `boot.ini`, and multi-board Device Tree Blobs (`dtb-select`).
-  * `p2` (`SquashFS zstd`, `< 180 MB`): Immutable, read-only root filesystem immune to sudden power-loss corruption.
-  * `p3` (`ext4`, `~59 GB`): Auto-expanded persistent save/configuration partition initialized at first boot by `S02piccolo-2go-storage`.
-* **TF2 — Media Slot (`128 GB` SanDisk Extreme PRO `A2`/`V30`):**
-  * `p1` (`exFAT` / `ext4`, `~119 GB`): Dedicated portable library partition automatically bound to `/userdata/{roms,music,bios}` on boot for ROMs, bit-perfect `FLAC_AX` / `.MOD` libraries, and system BIOS files.
-* **`384 MB` `zstd` ZRAM (`vm.swappiness=100`, `vm.page-cluster=0`):** Compresses cold anonymous pages in RAM at `~2.8:1` (`~1.05 GB` effective swap) with single-page (`4 KB`) latency and zero microSD flash wear.
+* **Primary USB-C OTG DAC — Early HiBy FC3 (`ESS ES9281AC Pro`, `1.3 Vrms / 70 mW @ 32 Ω`, VID `0x32BB`):**
+  * Hot-plugged via the `DWC2` USB-C OTG port (`99-ax-2go-otg.rules`), locking `power/control="on"` (zero USB autosuspend clicks) and bypassing PulseAudio/PipeWire/software resampling (`snd_pcm_hw_params_set_rate_resample(0)`).
+  * Streams native `32-bit` integer **`S32_LE` (`44.1–384 kHz`)** and hardware **`DoP` (`DSD64` `176.4 kHz` / `DSD128` `352.8 kHz`)** with hardware attenuator presets (`fc3_1v3`): `--volume 0.95` (portable speakers/line-out), `0.65` (wired headphones), and `0.35` (sensitive `16–32 Ω` IEMs).
+* **Internal Codec Fallback — Rockchip `RK817` (`I2S0`):**
+  * Automatically powers down its Class-D speaker amp when the HiBy FC3 is attached (eliminating PMIC rail noise), and seamlessly resumes driving the `3.5 mm` stereo headphone jack and bottom-firing mono speaker when the USB-C DAC is unplugged.
 
+### 5. Dual SanDisk Extreme PRO Storage Architecture (`64 GB TF1` + `128 GB TF2`)
 
+* **TF1 — OS & Save Slot (`64 GB` SanDisk Extreme PRO `A2` / `V30`):**
+  * `p1` (`FAT32`, `256 MB`): Boot partition housing U-Boot artifacts, pruned `linux-rk3326.fragment` kernel `Image` (`~110 MB` LPDDR3 reclaimed by disabling unused `VPU`, `ISP`, `RGA`, `Crypto`, `I2S1/TDM`, `PDM`, `Bluetooth`, and `IPv6`), `boot.ini`, and `/boot/dtbs/`.
+  * `p2` (`SquashFS zstd`, `< 180 MB`): Immutable, read-only root filesystem—immune to corruption on sudden power loss.
+  * `p3` (`ext4`, `~59 GB`): Auto-expanded on first boot (`S02piccolo-2go-storage`) for persistent save states, shader caches, and local fallback `/userdata`.
+* **TF2 — Portable Media Slot (`128 GB` SanDisk Extreme PRO `A2` / `V30`):**
+  * `p1` (`exFAT` / `ext4`, `~119 GB`): Dedicated media card automatically bound to `/userdata/{roms,music,bios}` on boot—allowing instant drag-and-drop of ROMs, Amiga WHDLoad sets, lossless `.flac` / `DoP` albums, and `.mod`/`.xm`/`.s3m`/`.it` trackers from any PC without touching `TF1`.
 ---
 
 ## 📁 Repository Structure
