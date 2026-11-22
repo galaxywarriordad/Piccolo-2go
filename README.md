@@ -7,7 +7,7 @@
 [![Image Footprint](https://img.shields.io/badge/Footprint-%3C%20180%20MB%20SquashFS-informational?style=flat-square)](#2-dual-sandisk-storage--memory-discipline)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-red?style=flat-square)](LICENSE)
 
-**Piccolo-2go** is a deterministic `aarch64` Buildroot operating system (`< 180 MB` SquashFS rootfs) engineered for the **BATLEXP G350** and **R36S** handheld consoles on **RK3326** silicon. Part of **The Silicon Preservation Society** ecosystem, it combines `1:2:1` Cortex-A35 core isolation, `384 MB` `zstd` ZRAM, KMS/DRM + Panfrost GLES 3.0 rendering, dual SanDisk Extreme PRO (`64 GB` + `128 GB`) storage discipline, `Amiberry` / `Hatari` / `BlastEm` `[AX]` emulation, and bit-perfect `FLAC_AX` `S32_LE` audio tuned for early **HiBy FC3 (`1.3 Vrms`)** USB-C OTG DACs.
+**Piccolo-2go** is a deterministic `aarch64` Buildroot operating system (`< 180 MB` SquashFS rootfs) engineered for the **BATLEXP G350** and **R36S** handheld consoles on **RK3326** silicon, **optimised with AX tech**. Part of **The Silicon Preservation Society** ecosystem, it combines `1:2:1` Cortex-A35 core isolation, `384 MB` `zstd` ZRAM, zero-copy Mali-G31 MP2 KMS/DRM + Panfrost GLES 3.0 rendering, dual SanDisk Extreme PRO (`64 GB` + `128 GB`) storage discipline, `Amiberry` / `Hatari` / `BlastEm` emulation, and bit-perfect `FLAC_AX` `S32_LE` audio tuned for early **HiBy FC3 (`1.3 Vrms`)** USB-C OTG DACs.
 
 ---
 
@@ -21,41 +21,44 @@
 
 ---
 
-## ⚙️ Architecture & Topology
+## ⚙️ Architecture & Topology (Optimised with AX Tech)
 
-### 1. `1:2:1` RK3326 Core & IRQ Topology
+### 1. `1:2:1` RK3326 Silicon & IRQ Topology
 
-The four in-order ARM Cortex-A35 cores are partitioned at boot via kernel command-line isolation (`isolcpus=0,1,2 nohz_full=0,1,2`) and runtime affinity enforcement (`S01piccolo-2go-isolate`) so real-time audio/input and frame scanout never contend with storage DMA or housekeeping tasks:
+The Rockchip **RK3326** pairs four dual-issue **in-order ARM Cortex-A35 (`1.5 GHz`)** cores with a shared `256 KB` L2 cache and a `32-bit` `1 GB LPDDR3-1600` (`~6.4 GB/s`) memory bus. Because in-order cores stall immediately on cache thrashing and unpinned interrupts, `Piccolo-2go` partitions the SoC at boot via tickless kernel isolation (`isolcpus=0,1,2 nohz_full=0,1,2 rcu_nocbs=0,1,2`) and `S01piccolo-2go-isolate`:
 
-| Core | Affinity Mask | Scheduler & Governor | Pinned Subsystems & IRQs |
+| Core | Affinity Mask | Scheduler & Governor | Pinned Subsystems & Hardware IRQs |
 | :--- | :--- | :--- | :--- |
-| **Core 0** | `0x01` | `SCHED_FIFO` (prio `80`) / `performance` | Real-time audio & input (`HiBy FC3` USB-C audio, `DWC2` OTG controller, `I2S0`, `GPIO` / `SARADC` controls) |
-| **Core 1** | `0x02` | `SCHED_OTHER` / `performance` | Zero-copy `KMS/DRM` & `Panfrost` GLES 3.0 video scanout on Mali-G31 MP2 |
-| **Core 2** | `0x04` | `SCHED_OTHER` / `performance` | Deterministic emulation JIT & DSP execution (`Amiberry`, `Hatari`, `BlastEm`, `PCSX-ReARMed`) |
-| **Core 3** | `0x08` | `SCHED_OTHER` (`nice +5`) / `ondemand` | Housekeeping core: SD/eMMC storage DMA, `ZRAM` compression, RAM preloader, and system daemons |
+| **Core 0** | `0x01` | `SCHED_FIFO` (prio `80`) / `performance` | **Real-Time Audio Clock & Input Plane:** Direct ALSA `S32_LE` writer (`192`-frame / `4.00 ms` period); `DWC2` USB-C OTG (`HiBy FC3`), `I2S0` (`RK817`), and `GPIO` / `SARADC` control IRQs |
+| **Core 1** | `0x02` | `SCHED_OTHER` / `performance` | **GPU & Zero-Copy Display Plane:** Direct `KMS/DRM` page-flip submission and `Mali-G31 MP2` (`Panfrost` GLES 3.0) draw calls to the `640×480 @ 60 Hz` MIPI DSI panel |
+| **Core 2** | `0x04` | `SCHED_OTHER` / `performance` | **Deterministic Emulation JIT & DSP Plane:** 68020/AGA JIT, Z80/68k/MIPS cycle-accurate execution (`Amiberry`, `Hatari`, `BlastEm`, `PCSX-ReARMed`) with hot `32 KB` L1 caches |
+| **Core 3** | `0x08` | `SCHED_OTHER` (`nice +5`) / `schedutil` | **Housekeeping & Storage DMA Plane:** `dwmmc` (`TF1`/`TF2` SanDisk SD) IRQs, `384 MB` `zstd` ZRAM, `FLAC_AX` `64 MiB` `SingleFile` RAM preloader, `ax_appliance_tui`, and `ax-powerd` |
 
-### 2. Dual SanDisk Storage & Memory Discipline
+### 2. GPU & Zero-Copy Display Pipeline (`Mali-G31 MP2` → `VOP` → `MIPI DSI`)
 
-Piccolo-2go enforces strict separation between immutable OS binaries and portable user libraries across dual SanDisk Extreme PRO microSD slots:
+* **Direct KMS/DRM + Panfrost GLES 3.0 (`SDL_VIDEODRIVER=kmsdrm`):** Eliminates X11 and Wayland compositors completely, saving `~35–50 MB` of LPDDR3 RAM and avoiding extra `640×480×4` framebuffer composition copies.
+* **Exact `2×` Integer Scaling (`640×480` 4:3 OCA IPS):** Classic `320×240` and `320×200` systems (`Amiga`, `Atari ST`, `Mega Drive`, `PS1`) map onto the `640×480` panel with razor-sharp integer pixels, zero aspect distortion, and deterministic VBlank pacing (`60.00 Hz` / `50.00 Hz`).
+* **Pruned Multimedia Silicon (`linux-rk3326.fragment`):** Disables unused `VPU`, `ISP`, and `RGA` 2D blocks and shrinks CMA reservation to `64 MB`, freeing `~110 MB` of physical LPDDR3 for emulation and audio buffers.
 
-* **TF1 — OS Slot (`64 GB` SanDisk Extreme PRO):**
-  * `p1` (`FAT32`): Boot partition housing U-Boot artifacts, kernel `Image`, and multi-board Device Tree Blobs (`dtb-select`).
-  * `p2` (`SquashFS zstd`): Immutable, read-only root filesystem (`< 180 MB` footprint) immune to sudden power-loss corruption.
-  * `p3` (`ext4`): Auto-expanded persistent overlay/configuration partition initialized at first boot by `S02piccolo-2go-storage`.
-* **TF2 — Media Slot (`128 GB` SanDisk Extreme PRO):**
-  * `p1` (`exFAT` / `ext4`): Dedicated portable library partition for ROMs, bit-perfect `FLAC_AX` audio libraries, and system BIOS files.
-* **Memory & Pruned Kernel Fragment:**
-  * Configures a `384 MB` `zstd`-compressed `ZRAM` swap device (`vm.swappiness=100`) to eliminate physical flash wear.
-  * Uses a stripped RK3326 kernel fragment (`board/piccolo-2go/linux-rk3326.fragment`) that drops unused SoC blocks (`VPU`, `ISP`, `RGA`, legacy codecs) and compiles USB networking drivers strictly as loadable modules.
+### 3. Bit-Perfect Audio Architecture (`HiBy FC3 1.3 Vrms` & `RK817` Fallback)
 
-### 3. Bit-Perfect Audio Subsystem
+* **Zero-Resampling `S32_LE` & Native DoP Pipeline:** Bypasses PulseAudio and PipeWire completely (`snd_pcm_hw_params_set_rate_resample(0)`), locking the DAC hardware clock directly to native sample rates (`44.1–384 kHz` PCM and `DSD64` `176.4 kHz` / `DSD128` `352.8 kHz` DoP) with zero USB autosuspend (`power/control="on"`).
+* **Dynamic Gain Staging & Hotplug (`99-ax-2go-otg.rules`):** Detects USB-C OTG attachment of the early **HiBy FC3 (`1.3 Vrms / 70 mW`, ESS ES9281AC Pro, VID `0x32BB`)** and applies hardware attenuator profiles (`fc3_1v3`) tailored for:
+  1. **Portable Powered Speakers / Line-Out:** `--volume 0.95` (`~1.24 Vrms` clean headroom)
+  2. **Wired Headphones (e.g., Grado SR325x, Koss Porta Pro):** `--volume 0.65`
+  3. **Sensitive In-Ear Monitors (`16–32 Ω`):** `--volume 0.35`
+* **Automatic Internal Fallback & Rail Isolation:** Hot-plugging the HiBy FC3 powers down the internal `RK817` Class-D speaker amplifier to eliminate PMIC switching noise; disconnecting the USB-C DAC seamlessly reverts ALSA routing to the internal **RK817** codec (`3.5 mm` jack + mono speaker).
 
-* **Direct Hardware Routing:** Bypasses PulseAudio and PipeWire completely, routing straight to ALSA `hw:` endpoints in native `S32_LE` format for `FLAC_AX` and emulator audio.
-* **Dynamic Gain Staging & Hotplug (`99-ax-2go-otg.rules`):** Detects USB-C OTG attachment of the early **HiBy FC3 (`1.3 Vrms`)** DAC (`VID 0x32BB`) and applies safe gain staging profiles tailored for:
-  1. Portable console speakers
-  2. Full-size wired headphones
-  3. Sensitive In-Ear Monitors (IEMs)
-* **Automatic Internal Fallback:** Seamlessly reverts audio routing and hardware volume curves to the internal **RK817** codec when the USB-C DAC is disconnected.
+### 4. Dual SanDisk Extreme PRO Storage & `384 MB` ZRAM Discipline
+
+* **TF1 — OS Slot (`64 GB` SanDisk Extreme PRO `A2`/`V30`):**
+  * `p1` (`FAT32`, `256 MB`): Boot partition housing U-Boot artifacts, kernel `Image`, `boot.ini`, and multi-board Device Tree Blobs (`dtb-select`).
+  * `p2` (`SquashFS zstd`, `< 180 MB`): Immutable, read-only root filesystem immune to sudden power-loss corruption.
+  * `p3` (`ext4`, `~59 GB`): Auto-expanded persistent save/configuration partition initialized at first boot by `S02piccolo-2go-storage`.
+* **TF2 — Media Slot (`128 GB` SanDisk Extreme PRO `A2`/`V30`):**
+  * `p1` (`exFAT` / `ext4`, `~119 GB`): Dedicated portable library partition automatically bound to `/userdata/{roms,music,bios}` on boot for ROMs, bit-perfect `FLAC_AX` / `.MOD` libraries, and system BIOS files.
+* **`384 MB` `zstd` ZRAM (`vm.swappiness=100`, `vm.page-cluster=0`):** Compresses cold anonymous pages in RAM at `~2.8:1` (`~1.05 GB` effective swap) with single-page (`4 KB`) latency and zero microSD flash wear.
+
 
 ---
 
