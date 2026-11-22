@@ -1,4 +1,4 @@
-### 🚀 Building from Source
+## 🚀 Building from Source
 
 # Clone Buildroot and the Piccolo-2go external tree
 git clone [https://github.com/buildroot/buildroot.git](https://github.com/buildroot/buildroot.git)
