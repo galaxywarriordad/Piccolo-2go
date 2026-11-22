@@ -11,3 +11,5 @@ make O=../build-piccolo-2go BR2_EXTERNAL=../Piccolo-2go piccolo_2go_rk3326_defco
 # Compile the < 180 MB SquashFS image
 cd ../build-piccolo-2go
 make -j$(nproc)
+
+## The resulting flashable TF1 image (sdcard.img) is written to build-piccolo-2go/images/sdcard.img.
