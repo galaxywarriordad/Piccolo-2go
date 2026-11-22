@@ -30,7 +30,7 @@
 │                  FIXED-HARDWARE APPLIANCE TOPOLOGY — BATLEXP G350 / R36S               │
 │                             Rockchip RK3326 (1.5 GHz) + 1 GB LPDDR3                    │
 │                                                                                        │
-│  [ Core 0 (0x01) ] ──► SCHED_FIFO 80 ALSA S32_LE + DWC2 OTG / I2S0 / GPIO+SARADC IRQs │
+│  [ Core 0 (0x01) ] ──► SCHED_FIFO 80 ALSA S32_LE + DWC2 OTG / I2S0 / GPIO+SARADC IRQs  │
 │  [ Core 1 (0x02) ] ──► Mali-G31 MP2 (Panfrost GLES 3.0) ──► VOP ──► 640×480 DSI LCD    │
 │  [ Core 2 (0x04) ] ──► Deterministic 68k / Z80 / MIPS JIT & DSP Worker (L1 Cache Hot)  │
 │  [ Core 3 (0x08) ] ──► SDMMC0/1 DMA IRQs + 384 MB zstd ZRAM + 64 MiB FLAC Preload      │
