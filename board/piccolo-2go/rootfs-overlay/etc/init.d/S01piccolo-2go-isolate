@@ -2,6 +2,8 @@
 # S01piccolo-2go-isolate — Deterministic 1:2:1 RK3326 Isolation, v1.1 CPU/GPU/DDR Profiles,
 #                          1024 MB LZ4 ZRAM, Mali-G31 / DMC Devfreq & Safe Recovery
 
+set -u
+
 mkdir -p /run/ax /run/lock
 
 apply_cpu_max_khz() {
@@ -34,8 +36,6 @@ apply_dmc_max_mhz() {
 }
 
 apply_governors_121() {
-    # Cores 0-2 (0x07): performance for deterministic audio/IRQs, GPU/RGA/scanout, and emulation/DSP
-    # Core 3 (0x08): schedutil for housekeeping, ZRAM, and SDMMC DMA
     for cpu in 0 1 2; do
         gov_file="/sys/devices/system/cpu/cpu${cpu}/cpufreq/scaling_governor"
         [ -f "$gov_file" ] && echo performance > "$gov_file" 2>/dev/null || true
@@ -70,6 +70,13 @@ read_conf_val() {
         fi
     done
     echo "$default_val"
+}
+
+is_truthy() {
+    case "$1" in
+        1|yes|YES|true|TRUE|on|ON) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 resolve_hw_profile() {
@@ -133,13 +140,13 @@ resolve_target_ddr_mhz() {
         high)
             case "$ddr_freq" in
                 786|800|900)
-                    if [ "$allow_high" = "1" ] || [ "$allow_high" = "yes" ] || [ "$allow_high" = "true" ]; then
+                    if is_truthy "$allow_high"; then
                         echo "$ddr_freq"
                         return 0
                     fi
                     ;;
                 *)
-                    if [ "$allow_high" = "1" ] || [ "$allow_high" = "yes" ] || [ "$allow_high" = "true" ]; then
+                    if is_truthy "$allow_high"; then
                         echo "786"
                         return 0
                     fi
@@ -155,18 +162,14 @@ resolve_target_ddr_mhz() {
             echo "$ddr_freq"
             ;;
         786|800|900)
-            if [ "$allow_high" = "1" ] || [ "$allow_high" = "yes" ] || [ "$allow_high" = "true" ]; then
+            if is_truthy "$allow_high"; then
                 echo "$ddr_freq"
             else
                 echo "720"
             fi
             ;;
         *)
-            if [ "$hw_prof" = "oc_boost" ]; then
-                echo "720"
-            else
-                echo "720"
-            fi
+            echo "720"
             ;;
     esac
 }
@@ -177,7 +180,7 @@ update_boot_ini_ddr() {
     boot_ini="/boot/boot.ini"
     [ -f "$boot_ini" ] && [ -w "$boot_ini" ] || return 0
     grep -q "max_ddrfreq=" "$boot_ini" 2>/dev/null || return 0
-    grep -q "max_ddrfreq=${target_mhz}\b" "$boot_ini" 2>/dev/null && return 0
+    grep -qE "max_ddrfreq=${target_mhz}([^0-9]|$)" "$boot_ini" 2>/dev/null && return 0
 
     tmp_ini="/run/ax/boot.ini.tmp.$$"
     sed "s/max_ddrfreq=[0-9]*/max_ddrfreq=${target_mhz}/g" "$boot_ini" > "$tmp_ini" 2>/dev/null || {
@@ -237,17 +240,15 @@ steer_irqs_121() {
     done
 }
 
-case "$1" in
+case "${1:-start}" in
     start)
         echo "[Piccolo-2go] Applying 1:2:1 Cortex-A35 topology, 1024 MB LZ4 ZRAM & Mali-G31 / DMC tuning..."
 
-        # 0. Bound tmpfs mounts early so temp files and shader cache stay in RAM
         mount -o remount,size=32M /tmp 2>/dev/null || true
         mount -o remount,size=16M /run 2>/dev/null || true
         mkdir -p /tmp/mesa_shader_cache /run/ax /run/lock
         chmod 1777 /tmp/mesa_shader_cache /run/lock
 
-        # 1. Hold-Button Safe Recovery Check (SELECT / FN / B held during boot)
         SAFE_RECOVERY=0
         if command -v ax-boot-recovery >/dev/null 2>&1 && ax-boot-recovery; then
             SAFE_RECOVERY=1
@@ -258,7 +259,6 @@ case "$1" in
             restore_golden_dtb
         fi
 
-        # 2. Detect active RK3326 board variant
         BOARD_COMPAT=$(tr '\0' ' ' < /proc/device-tree/compatible 2>/dev/null || echo "g350")
         case "$BOARD_COMPAT" in
             *r36h*) BOARD_ID="r36h" ;;
@@ -268,12 +268,10 @@ case "$1" in
         esac
         echo "AX_BOARD_ID=${BOARD_ID}" > /run/ax/board.env
 
-        # 3. Enforce madvise Transparent HugePages for large FBNeo ROM arenas
         if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
             echo madvise > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true
         fi
 
-        # 4. Configure 1024 MB LZ4 ZRAM (~650 MB/s in-order Cortex-A35 decompression, zero SD wear)
         if [ -b /dev/zram0 ]; then
             swapoff /dev/zram0 2>/dev/null || true
             echo 1 > /sys/block/zram0/reset 2>/dev/null || true
@@ -288,10 +286,8 @@ case "$1" in
             vm.watermark_scale_factor=125 \
             vm.vfs_cache_pressure=150 >/dev/null 2>&1 || true
 
-        # 5. Steer hardware IRQs and threaded IRQ handlers across 1:2:1 domains
         steer_irqs_121
 
-        # 6. Resolve profile and overrides (HW_PROFILE, CPU_PROFILE, GPU_FREQ, DDR_FREQ, LED_MODE, GPU_IDLE_GOV)
         HW_PROF=$(resolve_hw_profile "$SAFE_RECOVERY")
         CPU_PROF=$(read_conf_val "CPU_PROFILE" "1.34")
         LED_REQ=$(read_conf_val "LED_MODE" "off")
@@ -344,7 +340,6 @@ case "$1" in
         apply_led_mode "$LED_REQ"
         echo "$GPU_GOV" > /sys/class/devfreq/ff400000.gpu/governor 2>/dev/null || true
 
-        # 7. Pop-free RK817 internal codec initialization (zero speaker pop on boot)
         if command -v amixer >/dev/null 2>&1; then
             amixer -q set 'Playback' 0 2>/dev/null || true
             amixer -q set 'Playback Path' 'SPK' 2>/dev/null || true
@@ -352,7 +347,6 @@ case "$1" in
             amixer -q set 'Playback' 85% 2>/dev/null || true
         fi
 
-        # 8. Relax thermal polling to 2000 ms to avoid frame micro-stutter
         for tz in /sys/class/thermal/thermal_zone*/polling_delay; do
             [ -f "$tz" ] && echo 2000 > "$tz" 2>/dev/null || true
         done
