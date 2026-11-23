@@ -43,8 +43,9 @@ static int read_sysfs_int(const char* path, int fallback) {
 static void enforce_safe_clock_1300(void) {
     for (int cpu = 0; cpu < 4; ++cpu) {
         char path[256];
-        snprintf(path, sizeof(path),
-                 "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", cpu);
+        int n = snprintf(path, sizeof(path),
+                         "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", cpu);
+        if (n < 0 || (size_t)n >= sizeof(path)) continue;
         FILE* f = fopen(path, "w");
         if (f) {
             fprintf(f, "1296000\n");
