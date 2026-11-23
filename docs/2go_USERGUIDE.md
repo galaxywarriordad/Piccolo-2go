@@ -50,4 +50,8 @@ Because the RK3326's `SDMMC0` (`TF1`) and `SDMMC1` (`TF2`) controllers run on UH
 
 ---
 
-## 3. 🚀 Go to Installation & First-Boot Setup guide
+## 3. 🚀 Installation & First-Boot Setup Guide
+
+Follow the step-by-step flashing, `TF1`/`TF2` microSD preparation, DTB panel selection, and first-boot setup instructions in the dedicated installation guide:
+
+👉 **[Piccolo-2go Installation & First-Boot Setup Guide (`2go_INSTALLGUIDE.md`)](https://github.com/galaxywarriordad/Piccolo-2go/blob/main/docs/2go_INSTALLGUIDE.md)**
