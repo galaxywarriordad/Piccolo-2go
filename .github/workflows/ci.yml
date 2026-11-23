@@ -1,0 +1,34 @@
+name: Validate Piccolo-2go External Tree
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-aarch64-tree:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Piccolo-2go
+        uses: actions/checkout@v4
+
+      - name: Install Lint & Compiler Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck gcc
+
+      - name: Validate Shell Scripts & C Utilities
+        run: |
+          shellcheck -x \
+            board/piccolo-2go/post-build.sh \
+            board/piccolo-2go/post-image.sh \
+            board/piccolo-2go/rootfs-overlay/etc/init.d/S01piccolo-2go-isolate \
+            board/piccolo-2go/rootfs-overlay/etc/init.d/S02piccolo-2go-storage \
+            board/piccolo-2go/rootfs-overlay/usr/sbin/ax-audio-route
+          gcc -O2 -Wall -Wextra -Werror package/piccolo-2go-tools/src/dtb-select.c -o /tmp/dtb-select
+          gcc -O2 -Wall -Wextra -Werror package/piccolo-2go-tools/src/ax-powerd.c -o /tmp/ax-powerd
+          test -f external.desc
+          test -f external.mk
+          test -f Config.in
+          test -f configs/piccolo_2go_rk3326_defconfig
