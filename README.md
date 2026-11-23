@@ -1,7 +1,23 @@
 # ☕ Piccolo-2go (Optimised with AX Tech) 🎮
 
-### ☕ Roasted for Determinism — Fixed-Hardware Buildroot OS for BATLEXP G350 & R36S
+### 🎮 Piccolo-2go (`aarch64` RK3326) — Our New Dedicated Handheld Appliance. Roasted for Determinism — Fixed-Hardware Buildroot OS for BATLEXP G350 & R36S
 
+**Piccolo-2go** is our separate, purpose-built `aarch64` Buildroot external tree engineered from the ground up for the **BATLEXP G350** and **R36S** handhelds (`4×` in-order **ARM Cortex-A35**, **Mali-G31 MP2**, **1 GB LPDDR3**)
+
+## 🛠️ What We Built Inside Piccolo-2go
+
+* 🚀 **Self-Booting RK3326 Bootloader & Splash:** Raw `idbloader.img` (`32 KB`) + ATF `BL31` + U-Boot `2025.01` `u-boot.itb` (`8 MB`), rendering our `640×480` Espresso/Copper `logo.bmp` splash before booting an LZ4-compressed Linux `6.12.15` kernel directly into an immutable `< 140 MB` `128 KB`-block `zstd` SquashFS rootfs.
+* ⚡ **Custom Cortex-A35 & Mali-G31 Cache Tuning:** `1:2:1` core/IRQ isolation, `-O3 -mcpu=cortex-a35 -mtune=cortex-a35 -fomit-frame-pointer`, `CONFIG_TRANSPARENT_HUGEPAGE_MADVISE=y`, `PAN_MESA_DEBUG=noafbc`, RAM-backed `/tmp/mesa_shader_cache`, and `1024 MB` LZ4 ZRAM.
+* 🛡️ **Hardware Protection & Multi-Board Support:** Safe `24 MHz` CPU PLL steps (`1.30` / `1.34` / `1.39 GHz`), `720 MHz` DDR3 default (`666 MHz` safe backup), `ax-powerd` (`75°C` rollback + `3280 mV` LiPo guard), `ax-boot-recovery` (hold `SELECT`/`FN`/`B`), SDR50 dual-SD bus verification (`64 GB` TF1 + `128 GB` TF2), early HiBy FC3 (`1.3 Vrms`) OTG DAC hotplug (`ax-audio-route`), and `8` verified DTBs (`G350`, `R36H`, `R46H`, `R36S Plus`, `Panel 0/1/4`, `V21`).
+
+---
+
+## 🎯 Two High-Value Improvements We Can Make Next
+
+1. **🕹️ Zero-Config `GO-Super Gamepad.cfg` RetroArch Autoconfig (`Piccolo-2go`):**
+   * Adding `board/piccolo-2go/rootfs-overlay/etc/retroarch-joypads/GO-Super Gamepad.cfg` pre-mapped to the exact `odroidgo3-joypad` button codes we extracted from your `.dtb` files (`FN` = RGUI menu toggle, `FN + START` = clean exit back to `ax_appliance_tui`) makes FBNeo `100%` plug-and-play on first boot without manual hotkey binding.
+2. **💿 End-to-End `sdcard.img` Build Verification (`Piccolo-2go`):**
+   * Running a full Buildroot `make piccolo_2go_rk3326_defconfig` compile (locally in WSL2 or via an on-demand `workflow_dispatch` GitHub Actions job) validates upstream U-Boot `2025.01`, ATF `BL31`, Linux `6.12.15`, and `genimage` sector alignment (`32 KB` / `8 MB` / `16 MB`) so `sdcard.img` is ready to flash via Rufus/Win32DiskImager the moment your BATLEXP G350 arrives.
 **Repository:** [galaxywarriordad/Piccolo-2go](https://github.com/galaxywarriordad/Piccolo-2go) (`https://github.com/galaxywarriordad/Piccolo-2go.git`)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
