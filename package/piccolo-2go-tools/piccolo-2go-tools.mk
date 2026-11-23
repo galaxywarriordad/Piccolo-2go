@@ -14,11 +14,14 @@ define PICCOLO_2GO_TOOLS_BUILD_CMDS
 		$(@D)/dtb-select.c -o $(@D)/dtb-select
 	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall -Wextra \
 		$(@D)/ax-powerd.c -o $(@D)/ax-powerd
+	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall -Wextra \
+		$(@D)/ax-boot-recovery.c -o $(@D)/ax-boot-recovery
 endef
 
 define PICCOLO_2GO_TOOLS_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/dtb-select $(TARGET_DIR)/usr/bin/dtb-select
 	$(INSTALL) -D -m 0755 $(@D)/ax-powerd $(TARGET_DIR)/usr/sbin/ax-powerd
+	$(INSTALL) -D -m 0755 $(@D)/ax-boot-recovery $(TARGET_DIR)/usr/sbin/ax-boot-recovery
 endef
 
 $(eval $(generic-package))
