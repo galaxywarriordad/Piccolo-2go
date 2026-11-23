@@ -48,7 +48,7 @@ static int copy_file_sync(const char* src, const char* dst) {
         return -1;
     }
 
-    char buf[4096];
+    char buf[8192];
     ssize_t n;
     while ((n = read(in_fd, buf, sizeof(buf))) > 0) {
         ssize_t off = 0;
