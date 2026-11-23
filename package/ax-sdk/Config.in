@@ -1,0 +1,6 @@
+config BR2_PACKAGE_AX_SDK
+	bool "ax-sdk (Deterministic Hardware Runtime)"
+	default y
+	help
+	  Shared dependency-free C++20 deterministic hardware runtime
+	  (core affinity, SCHED_FIFO audio clock, memory locking).
