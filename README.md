@@ -171,11 +171,11 @@ Piccolo-2go/
 
 ## ⚙️ Included Hotkey Cheatsheet (Zero Manual Setup Needed)
 
-⚙️ FN (single press) or FN + FN: Toggle RetroArch RGUI menu
-⚙️ FN + START: Cleanly exit FBNeo back to ax_appliance_tui (and restore gpu-auto power saving)
-⚙️ FN + R1 / FN + L1: Quick Save State / Quick Load State (TF1 p3 /userdata/saves)
-⚙️ FN + Left / FN + Right: Decrease / Increase Save State Slot
-⚙️ FN + B: Reset current arcade/console board
+⚙️ FN (single press) or FN + FN: Toggle RetroArch RGUI menu    
+⚙️ FN + START: Cleanly exit FBNeo back to ax_appliance_tui (and restore gpu-auto power saving)    
+⚙️ FN + R1 / FN + L1: Quick Save State / Quick Load State (TF1 p3 /userdata/saves)    
+⚙️ FN + Left / FN + Right: Decrease / Increase Save State Slot    
+⚙️ FN + B: Reset current arcade/console board    
 
 ## 🎮 Supported Hardware
 
