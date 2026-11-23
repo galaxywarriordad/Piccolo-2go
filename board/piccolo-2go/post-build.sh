@@ -12,6 +12,7 @@ fi
 
 chmod 0755 "${TARGET_DIR}/etc/init.d/S01piccolo-2go-isolate" \
            "${TARGET_DIR}/etc/init.d/S02piccolo-2go-storage" \
+           "${TARGET_DIR}/etc/init.d/S03piccolo-2go-powerd" \
            "${TARGET_DIR}/usr/sbin/ax-audio-route" 2>/dev/null || true
 
 # Purge software Vulkan (lvp/lavapipe) ICD JSON so LLVM isn't dragged into memory
