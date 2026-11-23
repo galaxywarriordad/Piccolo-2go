@@ -147,27 +147,38 @@ Piccolo-2go/
 
 # **🎮 Supported Hardware**
 
-Piccolo-2go is developed, tuned, and primarily validated on the **BATLEXP G350** (rk3326-g350-linux.dtb, active by default).  
-To support the broader Rockchip RK3326 handheld family, the following **community-sourced Device Trees (.dtb)** are bundled in /boot/dtbs/ and selectable via dtb-select \<alias\> (or by copying the matching file to /boot/rk3326-g350-linux.dtb). **These additional DTBs are currently untested on Piccolo-2go—please open an Issue in this repository if you encounter panel, audio, or control mapping quirks on your revision:**  
-**Hold-Button Safe Recovery:** If you switch to an incompatible .dtb and get a black screen, hold **SELECT**, **FN**, or **B** while powering on—ax-boot-recovery will automatically restore rk3326-g350-linux.dtb, 1.296 GHz (1.30 GHz) safe CPU clocks, 520 MHz GPU, and 666 MHz DDR3 backup timings.
+## 🎮 Supported Hardware
 
-| dtb-select Alias | Bundled .dtb Filename | Target Model & How to Identify Your Revision | Status |
-| :---- | :---- | :---- | :---- |
-| **g350** | rk3326-g350-linux.dtb | **BATLEXP G350** — Vertical 3.5" 640×480 OCA IPS, matte shell, sloped shoulder buttons, single USB-C OTG \+ USB-C charge port | **Primary / Validated** |
-| **r36s-panel4 / r36s-panel4-t1** | rk3326-r36s-panel4-type1-linux.dtb | **R36S (Panel 4 Type 1\)** — Common modern R36S vertical handheld with updated 3.5" 640×480 MIPI DSI panel | Untested (Community DTB) |
-| **r36s-panel4-t2** | rk3326-r36s-panel4-type2-linux.dtb | **R36S (Panel 4 Type 2\)** — Alternate Panel 4 MIPI DSI timing variant | Untested (Community DTB) |
-| **r36s-v21** | rk3326-r36s-v21-linux.dtb | **R36S (V21 / V22 Motherboard)** — Newer R36S PCB revision (V21/V22 silkscreened near battery bay) with revised OTG/rumble GPIO routing | Untested (Community DTB) |
-| **r36s-panel0** | rk3326-r36s-panel0-linux.dtb | **R36S (Original / Panel 0\)** — First-generation 2023 R36S vertical unit with original 640×480 IPS panel timings | Untested (Community DTB) |
-| **r36s-panel1** | rk3326-r36s-panel1-linux.dtb | **R36S (Panel 1\)** — Early second-batch R36S vertical revision (Panel 1 screen timing variant) | Untested (Community DTB) |
-| **r36s-panel2** | rk3326-r36s-panel2-linux.dtb | **R36S (Panel 2\)** — R36S vertical revision (Panel 2 screen timing variant) | Untested (Community DTB) |
-| **r36s-panel3** | rk3326-r36s-panel3-linux.dtb | **R36S (Panel 3\)** — R36S vertical revision (Panel 3 screen timing variant) | Untested (Community DTB) |
-| **r36s-plus** | rk3326-r36splus-linux.dtb | **R36S Plus (1:1 Square Screen)** — Widescreen/square 720×720 1:1 IPS R36S variant | Untested (Community DTB) |
-| **r36s-pro** | rk3326-r36pro-linux.dtb | **R36 Pro** — RK3326 R36 Pro variant | Untested (Community DTB) |
-| **r36s-xx** | rk3326-r36xx-linux.dtb | **R36XX** — RK3326 R36XX variant | Untested (Community DTB) |
-| **r36h** | rk3326-r36h-linux.dtb | **GameConsole R36H** — Horizontal candybar-form-factor RK3326 handheld (3.5" 640×480 IPS, twin thumbsticks below D-pad/buttons) | Untested (Community DTB) |
-| **r46h** | rk3326-r46h-linux.dtb | **GameConsole R46H** — Larger horizontal RK3326 handheld (4.0" 720×720 / 640×480 IPS class) | Untested (Community DTB) |
+`Piccolo-2go` is developed, tuned, and primarily validated on the **BATLEXP G350** (`rk3326-g350-linux.dtb`, active by default).
 
-**Analog Thumbstick MUX Note (G350 vs. R36S/R36H):** The BATLEXP G350 and R36S/R36H wire their 4-channel SARADC analog multiplexers (amux-channel-mapping) and invert-absx/invert-absrx axis polarities differently. Booting with the matching .dtb for your board automatically applies the correct hardware axis mapping in odroidgo3-joypad.
+**Designed DACs in This Build (AliExpress Reference Lineup):**
+
+* **Primary USB-C DAC — HiBy FC3 (`£29.61`, `ES9281 PRO`):** MQA Dongle Type-C to `3.5mm` (`112mW` in listing, PCM up to `32-bit/384 kHz`, DSD up to `DSD128` / `2.8224 MHz` & `5.6448 MHz`, metal body, Black, `0.010 kg`), paired with `3.5mm` wired **Moondrop Chu** and tuned in `Piccolo-2go v1.1` around the `fc3_1v3` (`1.3 Vrms`) profile.
+* **Backup USB-C DAC 1 — JCALLY JM6 Pro (`£12.99`, `CX31993` + `MAX97220`):** Type-C to `3.5mm` dual-chip DAC/amp (up to `500 Ohm` impedance rating in listing, metal body, Blue/Red Type-C to `3.5mm`, `0.028 kg`), handled via `ax-audio-route` (`usb_backup`) and `99-ax-2go-otg.rules`.
+* **Backup USB-C DAC 2 — HiBy Digital D1 (`£11.11`, `CS46L41`):** Type-C HiFi Audio Dongle USB DAC Headphone AMP (`CS46L41`, `3.5mm` output, PCM `32-bit/384kHz` across `44.1/48/96/192/384 kHz`, `48 x 13 x 12.25 mm`, metal build, Black/Orange/Silver/1YVES, CE & WEEE), handled via `ax-audio-route` (`usb_backup`) and `99-ax-2go-otg.rules`.
+* **Onboard Fallback:** Internal **RK817** codec (`3.5 mm` jack + `1W` mono speaker) when no USB-C DAC is connected.
+
+To support the broader Rockchip RK3326 handheld family, the following **community-sourced Device Trees (`.dtb`)** are bundled in `/boot/dtbs/` and selectable via `dtb-select <alias>` (or by copying the matching file to `/boot/rk3326-g350-linux.dtb`). **These additional DTBs are currently untested on `Piccolo-2go`—please open an Issue in this repository if you encounter panel, audio, or control mapping quirks on your revision:**
+
+> **Hold-Button Safe Recovery:** If you switch to an incompatible `.dtb` and get a black screen, hold **`SELECT`**, **`FN`**, or **`B`** while powering on—`ax-boot-recovery` will automatically restore `rk3326-g350-linux.dtb`, `1.296 GHz` (`1.30 GHz`) safe CPU clocks, `520 MHz` GPU, and `666 MHz` DDR3 backup timings.
+
+| `dtb-select` Alias | Bundled `.dtb` Filename | Target Model & How to Identify Your Revision | Status |
+| :--- | :--- | :--- | :--- |
+| **`g350`** | `rk3326-g350-linux.dtb` | **BATLEXP G350** — Vertical 3.5" `640×480` OCA IPS, matte shell, sloped shoulder buttons, single USB-C OTG + USB-C charge port | **Primary / Validated** |
+| **`r36s-panel4`** / **`r36s-panel4-t1`** | `rk3326-r36s-panel4-type1-linux.dtb` | **R36S (Panel 4 Type 1)** — Common modern R36S vertical handheld with updated 3.5" `640×480` MIPI DSI panel | Untested *(Community DTB)* |
+| **`r36s-panel4-t2`** | `rk3326-r36s-panel4-type2-linux.dtb` | **R36S (Panel 4 Type 2)** — Alternate Panel 4 MIPI DSI timing variant | Untested *(Community DTB)* |
+| **`r36s-v21`** | `rk3326-r36s-v21-linux.dtb` | **R36S (V21 / V22 Motherboard)** — Newer R36S PCB revision (`V21`/`V22` silkscreened near battery bay) with revised OTG/rumble GPIO routing | Untested *(Community DTB)* |
+| **`r36s-panel0`** | `rk3326-r36s-panel0-linux.dtb` | **R36S (Original / Panel 0)** — First-generation 2023 R36S vertical unit with original `640×480` IPS panel timings | Untested *(Community DTB)* |
+| **`r36s-panel1`** | `rk3326-r36s-panel1-linux.dtb` | **R36S (Panel 1)** — Early second-batch R36S vertical revision (`Panel 1` screen timing variant) | Untested *(Community DTB)* |
+| **`r36s-panel2`** | `rk3326-r36s-panel2-linux.dtb` | **R36S (Panel 2)** — R36S vertical revision (`Panel 2` screen timing variant) | Untested *(Community DTB)* |
+| **`r36s-panel3`** | `rk3326-r36s-panel3-linux.dtb` | **R36S (Panel 3)** — R36S vertical revision (`Panel 3` screen timing variant) | Untested *(Community DTB)* |
+| **`r36s-plus`** | `rk3326-r36splus-linux.dtb` | **R36S Plus (`1:1` Square Screen)** — Widescreen/square `720×720` `1:1` IPS R36S variant | Untested *(Community DTB)* |
+| **`r36s-pro`** | `rk3326-r36pro-linux.dtb` | **R36 Pro** — RK3326 R36 Pro variant | Untested *(Community DTB)* |
+| **`r36s-xx`** | `rk3326-r36xx-linux.dtb` | **R36XX** — RK3326 R36XX variant | Untested *(Community DTB)* |
+| **`r36h`** | `rk3326-r36h-linux.dtb` | **GameConsole R36H** — Horizontal candybar-form-factor RK3326 handheld (`3.5"` `640×480` IPS, twin thumbsticks below D-pad/buttons) | Untested *(Community DTB)* |
+| **`r46h`** | `rk3326-r46h-linux.dtb` | **GameConsole R46H** — Larger horizontal RK3326 handheld (`4.0"` `720×720` / `640×480` IPS class) | Untested *(Community DTB)* |
+
+> **Analog Thumbstick MUX Note (`G350` vs. `R36S`/`R36H`):** The BATLEXP G350 and R36S/R36H wire their 4-channel `SARADC` analog multiplexers (`amux-channel-mapping`) and `invert-absx`/`invert-absrx` axis polarities differently. Booting with the matching `.dtb` for your board automatically applies the correct hardware axis mapping in `odroidgo3-joypad`.
 
 # **📄 License**
 
