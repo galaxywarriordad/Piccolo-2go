@@ -11,7 +11,7 @@ if [ -f "${BOARD_DIR}/logo.bmp" ]; then
     install -D -m 0644 "${BOARD_DIR}/logo.bmp" "${BINARIES_DIR}/logo.bmp"
 fi
 
-# Stage bundled verified DTBs (G350, R36H, R46H, R36S Plus & top 4 R36S panel revisions)
+# Stage bundled verified DTBs (G350, R36H, R46H, R36S Plus & R36S panel revisions)
 mkdir -p "${TARGET_DIR}/boot/dtbs"
 if [ -d "${BOARD_DIR}/dtbs" ]; then
     cp -f "${BOARD_DIR}/dtbs"/*.dtb "${BINARIES_DIR}/" 2>/dev/null || true
@@ -38,4 +38,8 @@ if [ -d "${TARGET_DIR}/usr/share/vulkan/icd.d" ]; then
 fi
 
 mkdir -p "${TARGET_DIR}/boot" "${TARGET_DIR}/userdata" "${TARGET_DIR}/mnt/tf2"
-echo "PICCOLO_2GO_ARCH=aarch64-rk3326" > "${TARGET_DIR}/etc/piccolo-2go-release"
+cat <<'EOF' > "${TARGET_DIR}/etc/piccolo-2go-release"
+PICCOLO_2GO_ARCH=aarch64-rk3326
+PICCOLO_2GO_VERSION=1.1
+PICCOLO_2GO_DEFAULT_DTB=/boot/rk3326-g350-linux.dtb
+EOF
