@@ -18,13 +18,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends shellcheck gcc
 
-      - name: Validate Shell Scripts & C Utilities
+      - name: Validate Shell Scripts, Packages & C Utilities
         run: |
           shellcheck -x \
             board/piccolo-2go/post-build.sh \
             board/piccolo-2go/post-image.sh \
             board/piccolo-2go/rootfs-overlay/etc/init.d/S01piccolo-2go-isolate \
             board/piccolo-2go/rootfs-overlay/etc/init.d/S02piccolo-2go-storage \
+            board/piccolo-2go/rootfs-overlay/etc/init.d/S03piccolo-2go-powerd \
             board/piccolo-2go/rootfs-overlay/usr/sbin/ax-audio-route
           gcc -O2 -Wall -Wextra -Werror package/piccolo-2go-tools/src/dtb-select.c -o /tmp/dtb-select
           gcc -O2 -Wall -Wextra -Werror package/piccolo-2go-tools/src/ax-powerd.c -o /tmp/ax-powerd
@@ -32,3 +33,8 @@ jobs:
           test -f external.mk
           test -f Config.in
           test -f configs/piccolo_2go_rk3326_defconfig
+          test -f board/piccolo-2go/rootfs-overlay/etc/inittab
+          test -f package/ax-sdk/Config.in
+          test -f package/ax-sdk/ax-sdk.mk
+          test -f package/flac-ax/Config.in
+          test -f package/flac-ax/flac-ax.mk
