@@ -1,5 +1,6 @@
 #!/bin/sh
-# S01piccolo-2go-isolate — Deterministic 1:2:1 RK3326 Isolation, Safe PLL Clock Steps (1.30/1.34/1.39 GHz) & 1024 MB LZ4 ZRAM
+# S01piccolo-2go-isolate — Deterministic 1:2:1 RK3326 Isolation, Safe PLL Steps (1.30/1.34/1.39 GHz),
+#                          1024 MB LZ4 ZRAM & Mali-G31 Panfrost tmpfs Shader Cache
 
 apply_cpu_max_khz() {
     target_khz="$1"
@@ -11,13 +12,20 @@ apply_cpu_max_khz() {
 
 case "$1" in
     start)
-        echo "[Piccolo-2go] Applying 1:2:1 Cortex-A35 topology & 1024 MB LZ4 ZRAM..."
+        echo "[Piccolo-2go] Applying 1:2:1 Cortex-A35 topology, 1024 MB LZ4 ZRAM & Mali-G31 cache..."
 
-        # 1. Bound tmpfs mounts so logs/temp files never eat into 1 GB LPDDR3
+        # 1. Bound tmpfs mounts & initialize zero-SD-write Panfrost shader cache in RAM
         mount -o remount,size=32M /tmp 2>/dev/null || true
         mount -o remount,size=16M /run 2>/dev/null || true
+        mkdir -p /tmp/mesa_shader_cache
+        chmod 1777 /tmp/mesa_shader_cache
 
-        # 2. Configure 1024 MB LZ4 ZRAM (~650 MB/s in-order Cortex-A35 decompression, zero SD wear)
+        # 2. Enforce madvise Transparent HugePages for large FBNeo ROM arenas (32x fewer TLB misses)
+        if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
+            echo madvise > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true
+        fi
+
+        # 3. Configure 1024 MB LZ4 ZRAM (~650 MB/s in-order Cortex-A35 decompression, zero SD wear)
         if [ -b /dev/zram0 ]; then
             swapoff /dev/zram0 2>/dev/null || true
             echo 1 > /sys/block/zram0/reset 2>/dev/null || true
@@ -32,7 +40,7 @@ case "$1" in
             vm.watermark_scale_factor=125 \
             vm.vfs_cache_pressure=150 >/dev/null 2>&1 || true
 
-        # 3. Steer Audio/USB-OTG/Input IRQs to Core 0 (0x01) and SDMMC DMA IRQs to Core 3 (0x08)
+        # 4. Steer Audio/USB-OTG/Input IRQs to Core 0 (0x01) and SDMMC DMA IRQs to Core 3 (0x08)
         for irq_dir in /proc/irq/[0-9]*; do
             [ -d "$irq_dir" ] || continue
             if grep -qiE "rk817|i2s|dwc2|usb|gpio|saradc" "$irq_dir"/* 2>/dev/null; then
@@ -42,7 +50,7 @@ case "$1" in
             fi
         done
 
-        # 4. Safe RK3326 PLL Steps (24 MHz multiples, capped below 1.4 GHz thermal wall):
+        # 5. Safe RK3326 PLL Steps (24 MHz multiples, capped below 1.4 GHz thermal wall):
         #    1296000 (1.30 GHz Stock Safe) | 1344000 (1.34 GHz Sweet-Spot +48 MHz) | 1392000 (1.39 GHz High +96 MHz)
         MAX_KHZ=1296000
         PROFILE_LABEL="1.296 GHz / 1.30 GHz (Official Stock Safe)"
@@ -61,7 +69,7 @@ case "$1" in
             [ -d "$cpu_dir" ] && echo schedutil > "$cpu_dir/scaling_governor" 2>/dev/null || true
         done
 
-        # 5. Pop-free RK817 internal codec initialization (zero speaker pop on boot)
+        # 6. Pop-free RK817 internal codec initialization (zero speaker pop on boot)
         if command -v amixer >/dev/null 2>&1; then
             amixer -q set 'Playback' 0 2>/dev/null || true
             amixer -q set 'Playback Path' 'SPK' 2>/dev/null || true
@@ -69,7 +77,7 @@ case "$1" in
             amixer -q set 'Playback' 85% 2>/dev/null || true
         fi
 
-        # 6. Relax thermal polling to 2000 ms to avoid frame micro-stutter
+        # 7. Relax thermal polling to 2000 ms to avoid frame micro-stutter
         for tz in /sys/class/thermal/thermal_zone*/polling_delay; do
             [ -f "$tz" ] && echo 2000 > "$tz" 2>/dev/null || true
         done
@@ -89,12 +97,18 @@ case "$1" in
         apply_cpu_max_khz 1392000
         echo "[Piccolo-2go] Switched CPU ceiling to 1.392 GHz / 1.39 GHz (1392000 kHz)"
         ;;
+    gpu-perf)
+        echo performance > /sys/class/devfreq/ff400000.gpu/governor 2>/dev/null || true
+        ;;
+    gpu-auto)
+        echo simple_ondemand > /sys/class/devfreq/ff400000.gpu/governor 2>/dev/null || true
+        ;;
     stop)
         swapoff /dev/zram0 2>/dev/null || true
         sync
         ;;
     *)
-        echo "Usage: $0 {start|stop|set-1.30|set-1.34|set-1.39}"
+        echo "Usage: $0 {start|stop|set-1.30|set-1.34|set-1.39|gpu-perf|gpu-auto}"
         exit 1
         ;;
 esac
