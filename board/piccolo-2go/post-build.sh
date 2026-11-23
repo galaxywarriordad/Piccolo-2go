@@ -4,8 +4,9 @@ set -eu
 TARGET_DIR="$1"
 BOARD_DIR="$(dirname "$0")"
 
-echo "[Piccolo-2go] Staging boot.ini, U-Boot logo.bmp, DTBs, permissions & RK3326 optimizations..."
+echo "[Piccolo-2go] Staging boot.ini, ax-2go.conf, U-Boot logo.bmp, DTBs & permissions..."
 install -D -m 0644 "${BOARD_DIR}/boot.ini" "${BINARIES_DIR}/boot.ini"
+install -D -m 0644 "${BOARD_DIR}/ax-2go.conf" "${BINARIES_DIR}/ax-2go.conf"
 if [ -f "${BOARD_DIR}/logo.bmp" ]; then
     install -D -m 0644 "${BOARD_DIR}/logo.bmp" "${BINARIES_DIR}/logo.bmp"
 fi
