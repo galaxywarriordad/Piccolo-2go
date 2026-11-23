@@ -1,6 +1,6 @@
 # 🏗️ Building Piccolo-2go from Source
 
-**Piccolo-2go** is built as an out-of-tree Buildroot (`BR2_EXTERNAL`) `aarch64` image for **BATLEXP G350** and **R36S** handhelds on **Rockchip RK3326** silicon (`1:2:1` core/IRQ isolation, `1024 MB` `LZ4` ZRAM, `SDR50` bus verification, and `128 KB`-block `zstd` SquashFS `< 140 MB`).
+**Piccolo-2go** is built as an out-of-tree Buildroot (`BR2_EXTERNAL`) `aarch64` image for **BATLEXP G350** (default) and **R36S** handhelds on **Rockchip RK3326** silicon (`1:2:1` core/IRQ isolation, `1024 MB` `LZ4` ZRAM, `SDR50` bus verification, and `128 KB`-block `zstd` SquashFS `< 140 MB`)[cite: 3, 13, 16].
 
 ---
 
@@ -45,5 +45,5 @@ build-piccolo-2go/images/sdcard.img
 
 ## 🧭 4. Next Steps
 
-* 💿 Flash `sdcard.img` onto your `64 GB` SanDisk Extreme PRO (`TF1`) and prepare `TF2` (`128 GB`) using the installation guide.
-* 🎧 Review the `1:2:1` core topology, `1024 MB` `LZ4` ZRAM tuning, and early `HiBy FC3` (`1.3 Vrms`) audio routing in the user and architecture guides.
+* 💿 Flash `sdcard.img` onto your `64 GB` SanDisk Extreme PRO (`TF1`) and prepare `TF2` (`128 GB`) using the installation guide[cite: 13].
+* 🎧 Review the `1:2:1` core topology, `1024 MB` `LZ4` ZRAM tuning, and early `HiBy FC3` (`1.3 Vrms`) audio routing in the user and architecture guides[cite: 13].
