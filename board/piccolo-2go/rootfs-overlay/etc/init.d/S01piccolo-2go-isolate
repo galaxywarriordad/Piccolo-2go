@@ -1,6 +1,6 @@
 #!/bin/sh
 # S01piccolo-2go-isolate — Deterministic 1:2:1 RK3326 Isolation, Safe PLL Steps (1.30/1.34/1.39 GHz),
-#                          1024 MB LZ4 ZRAM, Mali-G31 Cache, /boot/ax-2go.conf Overrides & Safe Recovery
+#                          1024 MB LZ4 ZRAM, Mali-G31 Cache, Bootloader DDR/CPU Config & Safe Recovery
 
 apply_cpu_max_khz() {
     target_khz="$1"
@@ -8,6 +8,18 @@ apply_cpu_max_khz() {
         [ -d "$cpu_dir" ] || continue
         echo "$target_khz" > "$cpu_dir/scaling_max_freq" 2>/dev/null || true
     done
+}
+
+apply_governors_121() {
+    # Cores 0-2 (0x07): performance for deterministic audio/IRQs, GPU/scanout, and emulation/DSP
+    # Core 3 (0x08): schedutil for housekeeping, ZRAM, and SDMMC DMA
+    for cpu in 0 1 2; do
+        gov_file="/sys/devices/system/cpu/cpu${cpu}/cpufreq/scaling_governor"
+        [ -f "$gov_file" ] && echo performance > "$gov_file" 2>/dev/null || true
+    done
+    if [ -f /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor ]; then
+        echo schedutil > /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor 2>/dev/null || true
+    fi
 }
 
 apply_led_mode() {
@@ -26,22 +38,137 @@ apply_led_mode() {
 read_conf_val() {
     key="$1"
     default_val="$2"
-    conf_file="/boot/ax-2go.conf"
-    if [ -f "$conf_file" ]; then
-        val=$(grep -E "^${key}=" "$conf_file" 2>/dev/null | tail -n 1 | cut -d'=' -f2 | tr -d ' \r\t"')
+    for conf_file in /boot/ax-2go.conf /boot/boot.ini; do
+        [ -f "$conf_file" ] || continue
+        val=$(grep -E "^[[:space:]]*${key}=" "$conf_file" 2>/dev/null | tail -n 1 | cut -d'=' -f2 | tr -d ' \r\t"')
         if [ -n "$val" ]; then
             echo "$val"
             return 0
         fi
-    fi
+    done
     echo "$default_val"
+}
+
+resolve_target_ddr_mhz() {
+    safe_mode="$1"
+    ddr_mode=$(read_conf_val "AX_DDR_MODE" "")
+    ddr_freq=$(read_conf_val "DDR_FREQ" "720")
+    allow_high=$(read_conf_val "ALLOW_HIGH_DDR" "0")
+
+    if [ "$safe_mode" -eq 1 ]; then
+        echo "666"
+        return 0
+    fi
+
+    case "$ddr_mode" in
+        safe|low)
+            echo "666"
+            return 0
+            ;;
+        default|normal)
+            echo "720"
+            return 0
+            ;;
+        high)
+            case "$ddr_freq" in
+                800|900)
+                    if [ "$allow_high" = "1" ] || [ "$allow_high" = "yes" ] || [ "$allow_high" = "true" ]; then
+                        echo "$ddr_freq"
+                        return 0
+                    fi
+                    ;;
+                *)
+                    if [ "$allow_high" = "1" ] || [ "$allow_high" = "yes" ] || [ "$allow_high" = "true" ]; then
+                        echo "800"
+                        return 0
+                    fi
+                    ;;
+            esac
+            echo "720"
+            return 0
+            ;;
+    esac
+
+    case "$ddr_freq" in
+        666|720)
+            echo "$ddr_freq"
+            ;;
+        800|900)
+            if [ "$allow_high" = "1" ] || [ "$allow_high" = "yes" ] || [ "$allow_high" = "true" ]; then
+                echo "$ddr_freq"
+            else
+                echo "720"
+            fi
+            ;;
+        *)
+            echo "720"
+            ;;
+    esac
+}
+
+update_boot_ini_ddr() {
+    target_mhz="$1"
+    boot_ini="/boot/boot.ini"
+    [ -f "$boot_ini" ] && [ -w "$boot_ini" ] || return 0
+    grep -q "max_ddrfreq=" "$boot_ini" 2>/dev/null || return 0
+    grep -q "max_ddrfreq=${target_mhz}\b" "$boot_ini" 2>/dev/null && return 0
+
+    tmp_ini="/run/ax/boot.ini.tmp.$$"
+    sed "s/max_ddrfreq=[0-9]*/max_ddrfreq=${target_mhz}/g" "$boot_ini" > "$tmp_ini" 2>/dev/null || {
+        rm -f "$tmp_ini"
+        return 0
+    }
+    if [ -s "$tmp_ini" ] && ! cmp -s "$boot_ini" "$tmp_ini" 2>/dev/null; then
+        cat "$tmp_ini" > "$boot_ini" 2>/dev/null || true
+        sync
+    fi
+    rm -f "$tmp_ini"
+}
+
+restore_golden_dtb() {
+    golden_dtb="/boot/recovery/rk3326-g350-linux.dtb"
+    fallback_dtb="/boot/dtbs/rk3326-g350-linux.dtb"
+    active_dtb="/boot/rk3326-g350-linux.dtb"
+    src_dtb=""
+    if [ -f "$golden_dtb" ]; then
+        src_dtb="$golden_dtb"
+    elif [ -f "$fallback_dtb" ]; then
+        src_dtb="$fallback_dtb"
+    fi
+
+    if [ -n "$src_dtb" ] && [ -w /boot ]; then
+        if [ ! -f "$active_dtb" ] || ! cmp -s "$src_dtb" "$active_dtb" 2>/dev/null; then
+            cp -f "$src_dtb" "$active_dtb" 2>/dev/null || true
+            sync
+        fi
+    fi
+}
+
+steer_irqs_121() {
+    for irq_dir in /proc/irq/[0-9]*; do
+        [ -d "$irq_dir" ] && [ -w "$irq_dir/smp_affinity" ] || continue
+        actions_file="$irq_dir/actions"
+        [ -r "$actions_file" ] || continue
+
+        if grep -qiE "(^|[^a-z0-9])(dwc2|rk817|i2s|gpio|saradc)([^a-z0-9]|$)" "$actions_file" 2>/dev/null; then
+            echo 1 > "$irq_dir/smp_affinity" 2>/dev/null || true
+        elif grep -qiE "(^|[^a-z0-9])(dwmmc|dw-mmc|mmc0|mmc1)([^a-z0-9]|$)" "$actions_file" 2>/dev/null; then
+            echo 8 > "$irq_dir/smp_affinity" 2>/dev/null || true
+        fi
+    done
 }
 
 case "$1" in
     start)
         echo "[Piccolo-2go] Applying 1:2:1 Cortex-A35 topology, 1024 MB LZ4 ZRAM & Mali-G31 cache..."
 
-        # 0. Hold-Button Safe Recovery Check (SELECT / FN / B held during boot)
+        # 0. Bound tmpfs mounts early so temp files and shader cache stay in RAM
+        mount -o remount,size=32M /tmp 2>/dev/null || true
+        mount -o remount,size=16M /run 2>/dev/null || true
+        mkdir -p /tmp/mesa_shader_cache /run/ax /run/lock
+        chmod 1777 /tmp/mesa_shader_cache /run/lock
+
+        # 1. Hold-Button Safe Recovery Check (SELECT / FN / B held during boot)
         SAFE_RECOVERY=0
         if command -v ax-boot-recovery >/dev/null 2>&1 && ax-boot-recovery; then
             SAFE_RECOVERY=1
@@ -49,20 +176,8 @@ case "$1" in
             if [ -w /dev/tty1 ]; then
                 printf '\n\033[1;33m[Piccolo-2go] SAFE RECOVERY TRIGGERED (Button Held) — Locking 1.30 GHz CPU, 666 MHz DDR3 & Default DTB!\033[0m\n' > /dev/tty1 2>/dev/null || true
             fi
-            if [ -f /boot/dtbs/rk3326-g350-linux.dtb ]; then
-                cp -f /boot/dtbs/rk3326-g350-linux.dtb /boot/rk3326-g350-linux.dtb 2>/dev/null || true
-            fi
-            if [ -w /boot/boot.ini ]; then
-                sed -i 's/max_ddrfreq=[0-9]*/max_ddrfreq=666/g' /boot/boot.ini 2>/dev/null || true
-            fi
-            sync
+            restore_golden_dtb
         fi
-
-        # 1. Bound tmpfs mounts & initialize zero-SD-write Panfrost shader cache in RAM
-        mount -o remount,size=32M /tmp 2>/dev/null || true
-        mount -o remount,size=16M /run 2>/dev/null || true
-        mkdir -p /tmp/mesa_shader_cache /run/ax /run/lock
-        chmod 1777 /tmp/mesa_shader_cache /run/lock
 
         # 2. Detect active RK3326 board variant (G350 vs R36S/R36H/R46H analog MUX & inversion profile)
         BOARD_COMPAT=$(tr '\0' ' ' < /proc/device-tree/compatible 2>/dev/null || echo "g350")
@@ -94,21 +209,15 @@ case "$1" in
             vm.watermark_scale_factor=125 \
             vm.vfs_cache_pressure=150 >/dev/null 2>&1 || true
 
-        # 5. Steer Audio/USB-OTG/Input IRQs to Core 0 (0x01) and SDMMC DMA IRQs to Core 3 (0x08)
-        for irq_dir in /proc/irq/[0-9]*; do
-            [ -d "$irq_dir" ] || continue
-            if grep -qiE "rk817|i2s|dwc2|usb|gpio|saradc" "$irq_dir"/* 2>/dev/null; then
-                echo 1 > "$irq_dir/smp_affinity" 2>/dev/null || true
-            elif grep -qiE "dwmmc|mmc" "$irq_dir"/* 2>/dev/null; then
-                echo 8 > "$irq_dir/smp_affinity" 2>/dev/null || true
-            fi
-        done
+        # 5. Narrow IRQ steering to audio/OTG/input (Core 0 -> 1) and SDMMC (Core 3 -> 8)
+        steer_irqs_121
 
-        # 6. Apply /boot/ax-2go.conf overrides (CPU_PROFILE, DDR_FREQ, LED_MODE, GPU_IDLE_GOV)
+        # 6. Apply bootloader / ax-2go.conf overrides (CPU_PROFILE, AX_DDR_MODE / DDR_FREQ, LED_MODE, GPU_IDLE_GOV)
         CPU_PROF=$(read_conf_val "CPU_PROFILE" "1.30")
-        DDR_REQ=$(read_conf_val "DDR_FREQ" "720")
         LED_REQ=$(read_conf_val "LED_MODE" "off")
         GPU_GOV=$(read_conf_val "GPU_IDLE_GOV" "simple_ondemand")
+        TARGET_DDR=$(resolve_target_ddr_mhz "$SAFE_RECOVERY")
+        update_boot_ini_ddr "$TARGET_DDR"
 
         MAX_KHZ=1296000
         PROFILE_LABEL="1.296 GHz / 1.30 GHz (Official Stock Safe)"
@@ -123,22 +232,11 @@ case "$1" in
                     PROFILE_LABEL="1.344 GHz / 1.34 GHz (Sweet-Spot PLL Step +48 MHz)"
                     ;;
             esac
-
-            case "$DDR_REQ" in
-                666|720|800|900)
-                    if [ -w /boot/boot.ini ] && ! grep -q "max_ddrfreq=${DDR_REQ}" /boot/boot.ini 2>/dev/null; then
-                        sed -i "s/max_ddrfreq=[0-9]*/max_ddrfreq=${DDR_REQ}/g" /boot/boot.ini 2>/dev/null || true
-                        sync
-                    fi
-                    ;;
-            esac
         fi
 
-        echo "[Piccolo-2go] Board: ${BOARD_ID} | CPU: ${PROFILE_LABEL} | LED: ${LED_REQ}"
+        echo "[Piccolo-2go] Board: ${BOARD_ID} | CPU: ${PROFILE_LABEL} | DDR: ${TARGET_DDR} MHz | LED: ${LED_REQ}"
         apply_cpu_max_khz "$MAX_KHZ"
-        for cpu_dir in /sys/devices/system/cpu/cpu[0-9]*/cpufreq; do
-            [ -d "$cpu_dir" ] && echo schedutil > "$cpu_dir/scaling_governor" 2>/dev/null || true
-        done
+        apply_governors_121
 
         apply_led_mode "$LED_REQ"
         echo "$GPU_GOV" > /sys/class/devfreq/ff400000.gpu/governor 2>/dev/null || true
@@ -184,3 +282,6 @@ case "$1" in
         ;;
 esac
 exit 0
+```[cite: 19, 20, 21]
+
+Where would you like to go next—`ax-audio-route` and `99-ax-2go-otg.rules`, or `ax-sdk`'s `CMakeLists.txt` and core headers[cite: 8, 9, 10, 18]?
