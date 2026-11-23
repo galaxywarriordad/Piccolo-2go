@@ -1,3 +1,6 @@
+# Piccolo-2go v1.1 Buildroot Defconfig (RK3326 aarch64)
+# Audio DACs: HiBy FC3 (£29.61, ES9281 PRO / ES9281AC Pro) primary plus JCALLY JM6 Pro (£12.99, CX31993 + MAX97220) and HiBy Digital D1 (£11.11, CS46L41) backup USB-C DACs.
+
 # --- Target Architecture: Rockchip RK3326 (4x In-Order ARM Cortex-A35, 1 GB LPDDR3) ---
 BR2_aarch64=y
 BR2_cortex_a35=y
@@ -83,3 +86,6 @@ BR2_PACKAGE_HOST_MTOOLS=y
 # BR2_PACKAGE_PULSEAUDIO is not set
 # BR2_PACKAGE_QT6 is not set
 # BR2_PACKAGE_LSFG_VK is not set
+```[cite: 14]
+
+Ready for the next group of files whenever you want to continue.
