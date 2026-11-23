@@ -10,11 +10,11 @@ PICCOLO_2GO_TOOLS_SITE_METHOD = local
 PICCOLO_2GO_TOOLS_LICENSE = GPL-3.0
 
 define PICCOLO_2GO_TOOLS_BUILD_CMDS
-	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall -Wextra \
+	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall -Wextra -Werror \
 		$(@D)/dtb-select.c -o $(@D)/dtb-select
-	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall -Wextra \
+	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall -Wextra -Werror \
 		$(@D)/ax-powerd.c -o $(@D)/ax-powerd
-	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall -Wextra \
+	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall -Wextra -Werror \
 		$(@D)/ax-boot-recovery.c -o $(@D)/ax-boot-recovery
 endef
 
