@@ -27,7 +27,9 @@ int main(void) {
     while ((ent = readdir(d)) != NULL) {
         if (strncmp(ent->d_name, "event", 5) != 0) continue;
         char path[512];
-        snprintf(path, sizeof(path), "/dev/input/%s", ent->d_name);
+        int n = snprintf(path, sizeof(path), "/dev/input/%s", ent->d_name);
+        if (n < 0 || (size_t)n >= sizeof(path)) continue;
+
         int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
         if (fd < 0) continue;
 
