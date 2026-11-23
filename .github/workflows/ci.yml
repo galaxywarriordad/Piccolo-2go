@@ -29,6 +29,7 @@ jobs:
             board/piccolo-2go/rootfs-overlay/usr/sbin/ax-audio-route
           gcc -O2 -Wall -Wextra -Werror package/piccolo-2go-tools/src/dtb-select.c -o /tmp/dtb-select
           gcc -O2 -Wall -Wextra -Werror package/piccolo-2go-tools/src/ax-powerd.c -o /tmp/ax-powerd
+          gcc -O2 -Wall -Wextra -Werror package/piccolo-2go-tools/src/ax-boot-recovery.c -o /tmp/ax-boot-recovery
           test -f external.desc
           test -f external.mk
           test -f Config.in
