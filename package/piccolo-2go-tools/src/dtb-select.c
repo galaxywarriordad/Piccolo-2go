@@ -1,4 +1,4 @@
-// dtb-select.c — Runtime Device Tree selector for BATLEXP G350 & all R36S variants
+// dtb-select.c — Runtime Device Tree selector for BATLEXP G350, R36H, R46H & R36S variants
 #define _GNU_SOURCE
 #include <dirent.h>
 #include <errno.h>
@@ -15,27 +15,19 @@ struct DtbAlias {
 
 static const struct DtbAlias kAliases[] = {
     {"g350",             "rk3326-g350-linux.dtb"},
+    {"r36h",             "rk3326-r36h-linux.dtb"},
+    {"r46h",             "rk3326-r46h-linux.dtb"},
+    {"r36s-plus",        "rk3326-r36splus-linux.dtb"},
     {"r36s-panel0",      "rk3326-r36s-panel0-linux.dtb"},
     {"r36s-panel1",      "rk3326-r36s-panel1-linux.dtb"},
     {"r36s-panel2",      "rk3326-r36s-panel2-linux.dtb"},
     {"r36s-panel3",      "rk3326-r36s-panel3-linux.dtb"},
+    {"r36s-panel4",      "rk3326-r36s-panel4-type1-linux.dtb"},
     {"r36s-panel4-t1",   "rk3326-r36s-panel4-type1-linux.dtb"},
     {"r36s-panel4-t2",   "rk3326-r36s-panel4-type2-linux.dtb"},
     {"r36s-v21",         "rk3326-r36s-v21-linux.dtb"},
-    {"r36s-plus",        "rk3326-r36splus-linux.dtb"},
     {"r36s-pro",         "rk3326-r36pro-linux.dtb"},
     {"r36s-xx",          "rk3326-r36xx-linux.dtb"},
-    {"r36s-t1-p1",       "rk3326-r36s-type1-panel1-linux.dtb"},
-    {"r36s-t1-p1-amp",   "rk3326-r36s-type1-panel1-with-amp-linux.dtb"},
-    {"r36s-t1-p1-inv",   "rk3326-r36s-type1-panel1-invert-linux.dtb"},
-    {"r36s-t1-p2",       "rk3326-r36s-type1-panel2-linux.dtb"},
-    {"r36s-t1-p3",       "rk3326-r36s-type1-panel3-linux.dtb"},
-    {"r36s-t1-p4",       "rk3326-r36s-type1-panel4-linux.dtb"},
-    {"r36s-t1-p5",       "rk3326-r36s-type1-panel5-linux.dtb"},
-    {"r36s-t2-p1",       "rk3326-r36s-type2-panel1-linux.dtb"},
-    {"r36s-t2-p1-amp",   "rk3326-r36s-type2-panel1-with-amp-linux.dtb"},
-    {"r36s-t2-p1-rk809", "rk3326-r36s-type2-panel1-rk809-linux.dtb"},
-    {"r36s-t2-p2",       "rk3326-r36s-type2-panel2-linux.dtb"},
 };
 
 static int copy_file_sync(const char* src, const char* dst) {
@@ -74,7 +66,7 @@ int main(int argc, char** argv) {
     const char* active_dtb = "/boot/rk3326-g350-linux.dtb";
 
     if (argc < 2) {
-        fprintf(stderr, "Usage: dtb-select <list | g350 | r36s-panel0..4 | r36s-v21 | r36s-t1-p1..5 | filename.dtb>\n");
+        fprintf(stderr, "Usage: dtb-select <list | g350 | r36h | r46h | r36s-plus | r36s-panel0..4 | r36s-v21 | filename.dtb>\n");
         return 1;
     }
 
