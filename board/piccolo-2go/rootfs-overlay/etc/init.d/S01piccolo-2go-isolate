@@ -1,6 +1,6 @@
 #!/bin/sh
 # S01piccolo-2go-isolate — Deterministic 1:2:1 RK3326 Isolation, Safe PLL Steps (1.30/1.34/1.39 GHz),
-#                          1024 MB LZ4 ZRAM, Mali-G31 Panfrost Cache & Hold-Button Safe Recovery
+#                          1024 MB LZ4 ZRAM, Mali-G31 Panfrost Cache, Board Detection & Safe Recovery
 
 apply_cpu_max_khz() {
     target_khz="$1"
@@ -34,15 +34,25 @@ case "$1" in
         # 1. Bound tmpfs mounts & initialize zero-SD-write Panfrost shader cache in RAM
         mount -o remount,size=32M /tmp 2>/dev/null || true
         mount -o remount,size=16M /run 2>/dev/null || true
-        mkdir -p /tmp/mesa_shader_cache
-        chmod 1777 /tmp/mesa_shader_cache
+        mkdir -p /tmp/mesa_shader_cache /run/ax /run/lock
+        chmod 1777 /tmp/mesa_shader_cache /run/lock
 
-        # 2. Enforce madvise Transparent HugePages for large FBNeo ROM arenas (32x fewer TLB misses)
+        # 2. Detect active RK3326 board variant (G350 vs R36S/R36H/R46H analog MUX & inversion profile)
+        BOARD_COMPAT=$(tr '\0' ' ' < /proc/device-tree/compatible 2>/dev/null || echo "g350")
+        case "$BOARD_COMPAT" in
+            *r36h*) BOARD_ID="r36h" ;;
+            *r46h*) BOARD_ID="r46h" ;;
+            *r36s*) BOARD_ID="r36s" ;;
+            *)      BOARD_ID="g350" ;;
+        esac
+        echo "AX_BOARD_ID=${BOARD_ID}" > /run/ax/board.env
+
+        # 3. Enforce madvise Transparent HugePages for large FBNeo ROM arenas (32x fewer TLB misses)
         if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
             echo madvise > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true
         fi
 
-        # 3. Configure 1024 MB LZ4 ZRAM (~650 MB/s in-order Cortex-A35 decompression, zero SD wear)
+        # 4. Configure 1024 MB LZ4 ZRAM (~650 MB/s in-order Cortex-A35 decompression, zero SD wear)
         if [ -b /dev/zram0 ]; then
             swapoff /dev/zram0 2>/dev/null || true
             echo 1 > /sys/block/zram0/reset 2>/dev/null || true
@@ -57,7 +67,7 @@ case "$1" in
             vm.watermark_scale_factor=125 \
             vm.vfs_cache_pressure=150 >/dev/null 2>&1 || true
 
-        # 4. Steer Audio/USB-OTG/Input IRQs to Core 0 (0x01) and SDMMC DMA IRQs to Core 3 (0x08)
+        # 5. Steer Audio/USB-OTG/Input IRQs to Core 0 (0x01) and SDMMC DMA IRQs to Core 3 (0x08)
         for irq_dir in /proc/irq/[0-9]*; do
             [ -d "$irq_dir" ] || continue
             if grep -qiE "rk817|i2s|dwc2|usb|gpio|saradc" "$irq_dir"/* 2>/dev/null; then
@@ -67,7 +77,7 @@ case "$1" in
             fi
         done
 
-        # 5. Safe RK3326 PLL Steps (24 MHz multiples, capped below 1.4 GHz thermal wall):
+        # 6. Safe RK3326 PLL Steps (24 MHz multiples, capped below 1.4 GHz thermal wall):
         #    1296000 (1.30 GHz Stock Safe) | 1344000 (1.34 GHz Sweet-Spot +48 MHz) | 1392000 (1.39 GHz High +96 MHz)
         MAX_KHZ=1296000
         PROFILE_LABEL="1.296 GHz / 1.30 GHz (Official Stock Safe)"
@@ -80,13 +90,13 @@ case "$1" in
                 PROFILE_LABEL="1.344 GHz / 1.34 GHz (Sweet-Spot PLL Step +48 MHz)"
             fi
         fi
-        echo "[Piccolo-2go] CPU frequency ceiling set to ${PROFILE_LABEL}"
+        echo "[Piccolo-2go] Board: ${BOARD_ID} | CPU ceiling: ${PROFILE_LABEL}"
         apply_cpu_max_khz "$MAX_KHZ"
         for cpu_dir in /sys/devices/system/cpu/cpu[0-9]*/cpufreq; do
             [ -d "$cpu_dir" ] && echo schedutil > "$cpu_dir/scaling_governor" 2>/dev/null || true
         done
 
-        # 6. Pop-free RK817 internal codec initialization (zero speaker pop on boot)
+        # 7. Pop-free RK817 internal codec initialization (zero speaker pop on boot)
         if command -v amixer >/dev/null 2>&1; then
             amixer -q set 'Playback' 0 2>/dev/null || true
             amixer -q set 'Playback Path' 'SPK' 2>/dev/null || true
@@ -94,13 +104,10 @@ case "$1" in
             amixer -q set 'Playback' 85% 2>/dev/null || true
         fi
 
-        # 7. Relax thermal polling to 2000 ms to avoid frame micro-stutter
+        # 8. Relax thermal polling to 2000 ms to avoid frame micro-stutter
         for tz in /sys/class/thermal/thermal_zone*/polling_delay; do
             [ -f "$tz" ] && echo 2000 > "$tz" 2>/dev/null || true
         done
-
-        mkdir -p /run/lock
-        chmod 1777 /run/lock
         ;;
     set-1.30|set-1.3)
         apply_cpu_max_khz 1296000
