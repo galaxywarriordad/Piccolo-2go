@@ -13,12 +13,12 @@ case "$1" in
         start-stop-daemon -K -p "$PIDFILE" 2>/dev/null || true
         rm -f "$PIDFILE"
         ;;
-    restart)
+    reload|restart)
         "$0" stop
         "$0" start
         ;;
     *)
-        echo "Usage: $0 {start|stop|restart}"
+        echo "Usage: $0 {start|stop|restart|reload}"
         exit 1
         ;;
 esac
