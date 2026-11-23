@@ -169,6 +169,14 @@ Piccolo-2go/
 8. **Wii U Engine (GitHub):** [`galaxywarriordad/Cemu-Latte-AX`](https://github.com/galaxywarriordad/Cemu-Latte-AX.git) — Deterministic Nintendo Wii U (Latte GPU) AX engine powered by `ax::sdk`.
 ---
 
+## ⚙️ Included Hotkey Cheatsheet (Zero Manual Setup Needed)
+
+⚙️ FN (single press) or FN + FN: Toggle RetroArch RGUI menu
+⚙️ FN + START: Cleanly exit FBNeo back to ax_appliance_tui (and restore gpu-auto power saving)
+⚙️ FN + R1 / FN + L1: Quick Save State / Quick Load State (TF1 p3 /userdata/saves)
+⚙️ FN + Left / FN + Right: Decrease / Increase Save State Slot
+⚙️ FN + B: Reset current arcade/console board
+
 ## 🎮 Supported Hardware
 
 `Piccolo-2go` is developed, tuned, and primarily validated on the **BATLEXP G350** (`rk3326-g350-linux.dtb`, active by default).
