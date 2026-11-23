@@ -5,17 +5,19 @@ config BR2_PACKAGE_PICCOLO_2GO_BASE
 	default y
 	select BR2_PACKAGE_AX_SDK
 	select BR2_PACKAGE_FLAC_AX
-	select BR2_PACKAGE_AMIBERRY_AX
-	select BR2_PACKAGE_HATARI_AX
-	select BR2_PACKAGE_BLASTEM_AX
+	select BR2_PACKAGE_FLAC_AX_APPLIANCE_TUI
+	select BR2_PACKAGE_RETROARCH
+	select BR2_PACKAGE_LIBRETRO_FBNEO
 	select BR2_PACKAGE_DTC
 	help
 	  Deterministic ARM64 (4x Cortex-A35) handheld appliance layer for the
 	  BATLEXP G350 and R36S with 1:2:1 core isolation, 1024 MB LZ4 ZRAM,
 	  KMS/DRM + Mali-G31 Panfrost GLES 3.0 direct scanout, dual SanDisk
 	  Extreme PRO (64 GB TF1 + 128 GB TF2) storage, early HiBy FC3 1.3 Vrms
-	  USB-C OTG DAC gain staging, and runtime DTB panel/calibration tools.
+	  USB-C OTG DAC gain staging, and initial FBNeo + FLAC_AX bring-up.
 
+source "$BR2_EXTERNAL_PICCOLO_2GO_PATH/package/ax-sdk/Config.in"
+source "$BR2_EXTERNAL_PICCOLO_2GO_PATH/package/flac-ax/Config.in"
 source "$BR2_EXTERNAL_PICCOLO_2GO_PATH/package/piccolo-2go-tools/Config.in"
 
 endmenu
