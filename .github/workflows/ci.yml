@@ -36,6 +36,7 @@ jobs:
           test -f Config.in
           test -f configs/piccolo_2go_rk3326_defconfig
           test -f board/piccolo-2go/rootfs-overlay/etc/inittab
+          test -f board/piccolo-2go/rootfs-overlay/etc/udev/rules.d/99-ax-2go-otg.rules
           test -f package/ax-sdk/Config.in
           test -f package/ax-sdk/ax-sdk.mk
           test -f package/flac-ax/Config.in
