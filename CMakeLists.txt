@@ -15,6 +15,7 @@ set(PICCOLO_CPU_MAX_MHZ "" CACHE STRING "Optional CPU max clock override in MHz 
 set(PICCOLO_CPU_BOOT_MHZ "" CACHE STRING "Optional CPU boot clock override in MHz (defaults to CPU max)")
 set(PICCOLO_APPLY_OC_DTBO OFF CACHE BOOL "Stage and apply rk3326-oc-voltage.dtbo in staged boot.ini")
 set(PICCOLO_STAGE_OVERLAY OFF CACHE BOOL "Stage repurposed udev/dma-heap rules into stage_overlay")
+set(PICCOLO_LOGO_FILE "${CMAKE_CURRENT_SOURCE_DIR}/board/piccolo-2go/logo.bmp" CACHE PATH "Piccolo-2go splash BMP (dArkOS logo is never used)")
 set(PICCOLO_STAGE_DIR "${CMAKE_BINARY_DIR}/stage_boot" CACHE PATH "Output BOOT staging directory")
 set(PICCOLO_OVERLAY_DIR "${CMAKE_BINARY_DIR}/stage_overlay" CACHE PATH "Output rootfs overlay staging directory")
 
@@ -103,29 +104,6 @@ else()
   set(EFF_VDD_LOGIC_UV "1162500")
 endif()
 
-# Logo resolution mapping per console (matches arkos4clone consoles/config.go)
-set(LOGO_SUBDIR "480P")
-if(PICCOLO_CONSOLE STREQUAL "a10miniv4")
-  set(LOGO_SUBDIR "540P")
-elseif(PICCOLO_CONSOLE MATCHES "^(r36ultra|r36tmax|r36splus|mini40|r36max type[123]|rf40h|dc40v|xf40v)$")
-  set(LOGO_SUBDIR "720P")
-elseif(PICCOLO_CONSOLE MATCHES "^(r36ultrax|h7|go2|r46h|r40xxpromax|r40xx|r36hpromax|r45h|r36max2|xf45v|dc45v|rf45v|rf45h|t16max)$")
-  set(LOGO_SUBDIR "768P")
-elseif(PICCOLO_CONSOLE MATCHES "^(rgb10max1|rgb10max2|r50s)$")
-  set(LOGO_SUBDIR "854x480P")
-elseif(PICCOLO_CONSOLE STREQUAL "r50h")
-  set(LOGO_SUBDIR "720x1280P")
-elseif(PICCOLO_CONSOLE STREQUAL "rf55h")
-  set(LOGO_SUBDIR "720x1280P-90")
-elseif(PICCOLO_CONSOLE MATCHES "^(rp1|dr28s)$")
-  set(LOGO_SUBDIR "480P-270")
-elseif(PICCOLO_CONSOLE STREQUAL "xf28")
-  set(LOGO_SUBDIR "480P-1")
-elseif(PICCOLO_CONSOLE MATCHES "^(u8 panel1|u8 panel2|r40s)$")
-  set(LOGO_SUBDIR "480P5-3")
-endif()
-
-set(LOGO_SRC_DIR "${CONSOLES_ROOT}/logo/${LOGO_SUBDIR}")
 find_program(DTC_EXECUTABLE dtc)
 
 set(BOOT_INI_SRC "${CONSOLE_SRC_DIR}/boot.ini")
@@ -147,10 +125,12 @@ add_custom_target(stage_piccolo_2go ALL
   COMMENT "Staging Piccolo-2go (${PICCOLO_CONSOLE}, kernel=${PICCOLO_KERNEL}, profile=${PICCOLO_PROFILE})"
 )
 
-if(EXISTS "${LOGO_SRC_DIR}")
+if(EXISTS "${PICCOLO_LOGO_FILE}")
   add_custom_command(TARGET stage_piccolo_2go POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory "${LOGO_SRC_DIR}" "${PICCOLO_STAGE_DIR}/logo"
-    COMMENT "Staging boot logo assets from logo/${LOGO_SUBDIR}"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+      "${PICCOLO_LOGO_FILE}"
+      "${PICCOLO_STAGE_DIR}/logo.bmp"
+    COMMENT "Staging Piccolo-2go logo.bmp"
   )
 endif()
 
