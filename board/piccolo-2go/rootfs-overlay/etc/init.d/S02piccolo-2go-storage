@@ -2,6 +2,8 @@
 # S02piccolo-2go-storage — Dual SanDisk Extreme PRO (64 GB TF1 + 128 GB TF2) Mounter,
 #                          SD Card Profiles (sdr50_pro / hs_compat / audio_quiet) & SDR50 Bus Guard
 
+set -u
+
 read_conf_val() {
     key="$1"
     default_val="$2"
@@ -36,10 +38,10 @@ tune_block_queue() {
 }
 
 check_and_enforce_sdr50() {
-    slot_label="$1"   # TF1 or TF2
-    mmc_host="$2"     # mmc0 or mmc1
-    dtb_node="$3"     # /dwmmc@ff370000 or /dwmmc@ff390000
-    sd_prof="$4"      # sdr50_pro | hs_compat | audio_quiet
+    slot_label="$1"
+    mmc_host="$2"
+    dtb_node="$3"
+    sd_prof="$4"
     dtb_file="/boot/rk3326-g350-linux.dtb"
 
     ios_file="/sys/kernel/debug/${mmc_host}/ios"
@@ -57,7 +59,6 @@ check_and_enforce_sdr50() {
         return 0
     fi
 
-    # Check if kernel logged UHS/SDR tuning or CRC errors on this host
     if dmesg 2>/dev/null | grep -qE "${mmc_host}:.*(tuning.*fail|CRC|error -84|error -110)"; then
         warn_tty "${slot_label} (${mmc_host}) failed UHS tuning/CRC check — locking safe 25 MHz High-Speed fallback!"
         if [ -w "$dtb_file" ] && command -v fdtput >/dev/null 2>&1; then
@@ -69,7 +70,6 @@ check_and_enforce_sdr50() {
         return 0
     fi
 
-    # Strip unstable SDR104 on fixed-3.3V VQMMC boards and ensure SDR50 (50 MHz) is enabled if supported
     case "$timing_line" in
         *"SDR50"*|*"SDR104"*)
             echo "[Piccolo-2go] ${slot_label} (${mmc_host}) verified UHS active (${sd_prof}): ${timing_line}"
@@ -88,7 +88,7 @@ check_and_enforce_sdr50() {
     esac
 }
 
-case "$1" in
+case "${1:-start}" in
     start)
         SD_PROF=$(read_conf_val "SD_PROFILE" "sdr50_pro")
         case "$SD_PROF" in
@@ -122,7 +122,6 @@ case "$1" in
         echo "[Piccolo-2go] Mounting dual SanDisk Extreme PRO storage (profile=${SD_PROF}, TF1_RA=${TF1_RA}KB, TF2_RA=${TF2_RA}KB)..."
         mkdir -p /userdata /mnt/tf2
 
-        # Detect boot SD block device dynamically (typically /dev/mmcblk0)
         ROOT_SRC=$(awk '$2 == "/" {print $1; exit}' /proc/mounts)
         case "$ROOT_SRC" in
             /dev/mmcblk0p*) SYS_DEV="/dev/mmcblk0"; SYS_BLK="mmcblk0"; MEDIA_PART="/dev/mmcblk1p1"; MEDIA_BLK="mmcblk1" ;;
@@ -131,11 +130,9 @@ case "$1" in
         esac
         SYS_PART="${SYS_DEV}p3"
 
-        # 1. Tune block queue & verify SDR50 (50 MHz) bus mode on TF1 (64 GB OS slot)
         tune_block_queue "$SYS_BLK" "$TF1_RA"
         check_and_enforce_sdr50 "TF1 (64GB OS)" "mmc0" "/dwmmc@ff370000" "$SD_PROF"
 
-        # 2. Auto-expand & format TF1 p3 (64 GB SanDisk Extreme PRO) on first boot without rebooting
         if [ -b "$SYS_PART" ]; then
             if ! blkid "$SYS_PART" >/dev/null 2>&1; then
                 parted -s "$SYS_DEV" resizepart 3 100% 2>/dev/null || true
@@ -147,7 +144,6 @@ case "$1" in
 
         mkdir -p /userdata/roms /userdata/music /userdata/bios /userdata/saves /userdata/configs
 
-        # 3. Probe TF2 (128 GB SanDisk Extreme PRO), verify SDR50 & bind-mount media library
         if [ -b "$MEDIA_PART" ]; then
             tune_block_queue "$MEDIA_BLK" "$TF2_RA"
             check_and_enforce_sdr50 "TF2 (128GB Media)" "mmc1" "/dwmmc@ff390000" "$SD_PROF"
