@@ -1,6 +1,6 @@
 #!/bin/sh
 # S01piccolo-2go-isolate — Deterministic 1:2:1 RK3326 Isolation, Safe PLL Steps (1.30/1.34/1.39 GHz),
-#                          1024 MB LZ4 ZRAM, Mali-G31 Panfrost Cache, Board Detection & Safe Recovery
+#                          1024 MB LZ4 ZRAM, Mali-G31 Cache, /boot/ax-2go.conf Overrides & Safe Recovery
 
 apply_cpu_max_khz() {
     target_khz="$1"
@@ -8,6 +8,33 @@ apply_cpu_max_khz() {
         [ -d "$cpu_dir" ] || continue
         echo "$target_khz" > "$cpu_dir/scaling_max_freq" 2>/dev/null || true
     done
+}
+
+apply_led_mode() {
+    mode="$1"
+    for led_dir in /sys/class/leds/*; do
+        [ -d "$led_dir" ] || continue
+        if [ "$mode" = "off" ]; then
+            echo none > "$led_dir/trigger" 2>/dev/null || true
+            echo 0 > "$led_dir/brightness" 2>/dev/null || true
+        else
+            echo heartbeat > "$led_dir/trigger" 2>/dev/null || true
+        fi
+    done
+}
+
+read_conf_val() {
+    key="$1"
+    default_val="$2"
+    conf_file="/boot/ax-2go.conf"
+    if [ -f "$conf_file" ]; then
+        val=$(grep -E "^${key}=" "$conf_file" 2>/dev/null | tail -n 1 | cut -d'=' -f2 | tr -d ' \r\t"')
+        if [ -n "$val" ]; then
+            echo "$val"
+            return 0
+        fi
+    fi
+    echo "$default_val"
 }
 
 case "$1" in
@@ -77,24 +104,44 @@ case "$1" in
             fi
         done
 
-        # 6. Safe RK3326 PLL Steps (24 MHz multiples, capped below 1.4 GHz thermal wall):
-        #    1296000 (1.30 GHz Stock Safe) | 1344000 (1.34 GHz Sweet-Spot +48 MHz) | 1392000 (1.39 GHz High +96 MHz)
+        # 6. Apply /boot/ax-2go.conf overrides (CPU_PROFILE, DDR_FREQ, LED_MODE, GPU_IDLE_GOV)
+        CPU_PROF=$(read_conf_val "CPU_PROFILE" "1.30")
+        DDR_REQ=$(read_conf_val "DDR_FREQ" "720")
+        LED_REQ=$(read_conf_val "LED_MODE" "off")
+        GPU_GOV=$(read_conf_val "GPU_IDLE_GOV" "simple_ondemand")
+
         MAX_KHZ=1296000
         PROFILE_LABEL="1.296 GHz / 1.30 GHz (Official Stock Safe)"
-        if [ "$SAFE_RECOVERY" -eq 0 ] && [ -f /boot/ax-cpu.conf ]; then
-            if grep -qE "^(CPU_PROFILE=1\\.39|CPU_MAX_KHZ=1392000)$" /boot/ax-cpu.conf 2>/dev/null; then
-                MAX_KHZ=1392000
-                PROFILE_LABEL="1.392 GHz / 1.39 GHz (High PLL Step +96 MHz)"
-            elif grep -qE "^(CPU_PROFILE=1\\.34|CPU_MAX_KHZ=1344000)$" /boot/ax-cpu.conf 2>/dev/null; then
-                MAX_KHZ=1344000
-                PROFILE_LABEL="1.344 GHz / 1.34 GHz (Sweet-Spot PLL Step +48 MHz)"
-            fi
+        if [ "$SAFE_RECOVERY" -eq 0 ]; then
+            case "$CPU_PROF" in
+                1.39|1392000)
+                    MAX_KHZ=1392000
+                    PROFILE_LABEL="1.392 GHz / 1.39 GHz (High PLL Step +96 MHz)"
+                    ;;
+                1.34|1344000)
+                    MAX_KHZ=1344000
+                    PROFILE_LABEL="1.344 GHz / 1.34 GHz (Sweet-Spot PLL Step +48 MHz)"
+                    ;;
+            esac
+
+            case "$DDR_REQ" in
+                666|720|800|900)
+                    if [ -w /boot/boot.ini ] && ! grep -q "max_ddrfreq=${DDR_REQ}" /boot/boot.ini 2>/dev/null; then
+                        sed -i "s/max_ddrfreq=[0-9]*/max_ddrfreq=${DDR_REQ}/g" /boot/boot.ini 2>/dev/null || true
+                        sync
+                    fi
+                    ;;
+            esac
         fi
-        echo "[Piccolo-2go] Board: ${BOARD_ID} | CPU ceiling: ${PROFILE_LABEL}"
+
+        echo "[Piccolo-2go] Board: ${BOARD_ID} | CPU: ${PROFILE_LABEL} | LED: ${LED_REQ}"
         apply_cpu_max_khz "$MAX_KHZ"
         for cpu_dir in /sys/devices/system/cpu/cpu[0-9]*/cpufreq; do
             [ -d "$cpu_dir" ] && echo schedutil > "$cpu_dir/scaling_governor" 2>/dev/null || true
         done
+
+        apply_led_mode "$LED_REQ"
+        echo "$GPU_GOV" > /sys/class/devfreq/ff400000.gpu/governor 2>/dev/null || true
 
         # 7. Pop-free RK817 internal codec initialization (zero speaker pop on boot)
         if command -v amixer >/dev/null 2>&1; then
