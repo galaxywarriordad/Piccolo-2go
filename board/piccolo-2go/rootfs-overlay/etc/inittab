@@ -1,0 +1,17 @@
+# /etc/inittab — Piccolo-2go Deterministic Appliance Init (RK3326)
+::sysinit:/bin/mount -t proc proc /proc
+::sysinit:/bin/mount -o remount,rw / 2>/dev/null || true
+::sysinit:/bin/mkdir -p /dev/pts /dev/shm /run /tmp
+::sysinit:/bin/mount -a
+::sysinit:/bin/hostname -F /etc/hostname 2>/dev/null || true
+::sysinit:/etc/init.d/rcS
+
+# Boot straight into Espresso Appliance TUI on 640x480 MIPI DSI LCD (tty1)
+tty1::respawn:/usr/bin/ax_appliance_tui
+
+# Serial UART debug console (1.5 Mbps RK3326 standard)
+ttyFIQ0::respawn:/sbin/getty -L ttyFIQ0 1500000 vt100
+
+# Clean unmount & ZRAM teardown on reboot/poweroff
+::shutdown:/etc/init.d/rcK
+::shutdown:/bin/umount -a -r
