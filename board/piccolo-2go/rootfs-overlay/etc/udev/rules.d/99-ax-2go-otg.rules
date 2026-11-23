@@ -1,1 +1,14 @@
+# 99-ax-2go-otg.rules — Early HiBy FC3 (1.3 Vrms) USB-C OTG DAC & MIDI Zero-Suspend Rules
 
+# HiBy FC3 / ESS ES9281AC Pro (VID 0x32bb / 0x2fc6) — lock USB power/control="on" (zero autosuspend clicks)
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="32bb", TEST=="power/control", ATTR{power/control}="on"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="2fc6", TEST=="power/control", ATTR{power/control}="on"
+
+# Akai MPK Mini MK3 (VID 0x09e8) — disable USB autosuspend for RawMIDI
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="09e8", TEST=="power/control", ATTR{power/control}="on"
+
+# Route audio dynamically when HiBy FC3 is attached or removed (and gate V21/V22 shared OTG/rumble pin)
+ACTION=="add", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="32bb", RUN+="/usr/sbin/ax-audio-route apply"
+ACTION=="add", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="2fc6", RUN+="/usr/sbin/ax-audio-route apply"
+ACTION=="remove", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="32bb", RUN+="/usr/sbin/ax-audio-route apply"
+ACTION=="remove", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="2fc6", RUN+="/usr/sbin/ax-audio-route apply"
