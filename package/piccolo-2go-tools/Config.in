@@ -1,0 +1,8 @@
+config BR2_PACKAGE_PICCOLO_2GO_TOOLS
+	bool "piccolo-2go-tools (dtb-select & ax-powerd)"
+	default y
+	help
+	  Lightweight zero-dependency C utilities for Rockchip RK3326
+	  handhelds (BATLEXP G350 & all R36S variants): runtime MIPI DSI
+	  panel DTB selector (dtb-select) and Core 3 safe KEY_POWER /
+	  75C thermal rollback / 3280 mV LiPo brownout daemon (ax-powerd).
