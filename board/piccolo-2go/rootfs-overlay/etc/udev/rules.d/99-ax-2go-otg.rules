@@ -7,8 +7,10 @@ ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="2fc6", TEST=="power/control", 
 # Akai MPK Mini MK3 (VID 0x09e8) — disable USB autosuspend for RawMIDI
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="09e8", TEST=="power/control", ATTR{power/control}="on"
 
-# Route audio dynamically when HiBy FC3 is attached or removed (and gate V21/V22 shared OTG/rumble pin)
+# Route audio dynamically when HiBy FC3 is attached or removed
 ACTION=="add", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="32bb", RUN+="/usr/sbin/ax-audio-route apply"
 ACTION=="add", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="2fc6", RUN+="/usr/sbin/ax-audio-route apply"
 ACTION=="remove", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="32bb", RUN+="/usr/sbin/ax-audio-route apply"
 ACTION=="remove", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="2fc6", RUN+="/usr/sbin/ax-audio-route apply"
+ACTION=="remove", SUBSYSTEM=="usb", ATTR{idVendor}=="32bb", RUN+="/usr/sbin/ax-audio-route apply"
+ACTION=="remove", SUBSYSTEM=="usb", ATTR{idVendor}=="2fc6", RUN+="/usr/sbin/ax-audio-route apply"
