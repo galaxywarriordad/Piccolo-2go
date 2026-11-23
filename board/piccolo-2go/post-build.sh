@@ -4,8 +4,11 @@ set -eu
 TARGET_DIR="$1"
 BOARD_DIR="$(dirname "$0")"
 
-echo "[Piccolo-2go] Staging boot.ini, executable permissions & RK3326 optimizations..."
+echo "[Piccolo-2go] Staging boot.ini, U-Boot logo.bmp, permissions & RK3326 optimizations..."
 install -D -m 0644 "${BOARD_DIR}/boot.ini" "${BINARIES_DIR}/boot.ini"
+if [ -f "${BOARD_DIR}/logo.bmp" ]; then
+    install -D -m 0644 "${BOARD_DIR}/logo.bmp" "${BINARIES_DIR}/logo.bmp"
+fi
 
 chmod 0755 "${TARGET_DIR}/etc/init.d/S01piccolo-2go-isolate" \
            "${TARGET_DIR}/etc/init.d/S02piccolo-2go-storage" \
