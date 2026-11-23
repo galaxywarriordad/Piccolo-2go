@@ -1,3 +1,13 @@
+## **Piccolo-2go v1.1 Audio & Movie Subsystem**
+
+**Primary Audio:** HiBy FC3 (£29.61, ES9281 PRO / ES9281AC Pro, 1.3 Vrms) \+ 3.5mm Moondrop Chu
+
+**Backup USB-C DACs:** JCALLY JM6 Pro (£12.99, CX31993 \+ MAX97220) and HiBy Digital D1 (£11.11, CS46L41)
+
+**Internal Fallback:** RK817 audio codec
+
+**Video Playback:** 640x480 mpv / /userdata/movies support
+
 # **🎮 Piccolo-2go — System Architecture & Fixed-Hardware Topology (v1.1)**
 
 &nbsp;
