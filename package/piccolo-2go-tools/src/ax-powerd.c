@@ -42,7 +42,7 @@ static int read_sysfs_int(const char* path, int fallback) {
 
 static void enforce_safe_clock_1300(void) {
     for (int cpu = 0; cpu < 4; ++cpu) {
-        char path;
+        char path[256];
         snprintf(path, sizeof(path),
                  "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", cpu);
         FILE* f = fopen(path, "w");
@@ -73,7 +73,7 @@ int main(void) {
     signal(SIGTERM, on_sig);
     pin_to_core3();
 
-    struct pollfd pfds;
+    struct pollfd pfds[16];
     int nfds = 0;
 
     DIR* d = opendir("/dev/input");
@@ -81,7 +81,7 @@ int main(void) {
         struct dirent* ent;
         while ((ent = readdir(d)) != NULL && nfds < 16) {
             if (strncmp(ent->d_name, "event", 5) != 0) continue;
-            char path;
+            char path[512];
             snprintf(path, sizeof(path), "/dev/input/%s", ent->d_name);
             int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
             if (fd >= 0) {
@@ -136,7 +136,6 @@ int main(void) {
             }
         }
 
-        // Every ~5 seconds: check 75C thermal rollback & 3280 mV LiPo brownout floor
         if (++tick_counter >= 10) {
             tick_counter = 0;
             int temp_mc = read_sysfs_int("/sys/class/thermal/thermal_zone0/temp", 0);
@@ -149,7 +148,7 @@ int main(void) {
             int discharging = 1;
             FILE* st = fopen("/sys/class/power_supply/battery/status", "r");
             if (st) {
-                char status_buf = {0};
+                char status_buf[32] = {0};
                 if (fgets(status_buf, sizeof(status_buf), st) &&
                     strncmp(status_buf, "Charging", 8) == 0) {
                     discharging = 0;
