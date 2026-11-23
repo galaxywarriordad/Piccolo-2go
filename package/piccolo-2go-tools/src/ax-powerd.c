@@ -53,12 +53,17 @@ static void enforce_safe_clock_1300(void) {
     }
 }
 
+static void run_cmd_best_effort(const char* cmd) {
+    int rc = system(cmd);
+    (void)rc;
+}
+
 static void clean_poweroff(void) {
-    (void)system("pkill -USR1 -x flac_ax 2>/dev/null || true");
-    (void)system("pkill -TERM -x retroarch 2>/dev/null || true");
+    run_cmd_best_effort("pkill -USR1 -x flac_ax 2>/dev/null || true");
+    run_cmd_best_effort("pkill -TERM -x retroarch 2>/dev/null || true");
     usleep(250000);
     sync();
-    (void)system("/etc/init.d/S02piccolo-2go-storage stop 2>/dev/null || true");
+    run_cmd_best_effort("/etc/init.d/S02piccolo-2go-storage stop 2>/dev/null || true");
     sync();
     reboot(RB_POWER_OFF);
 }
@@ -76,7 +81,7 @@ int main(void) {
         struct dirent* ent;
         while ((ent = readdir(d)) != NULL && nfds < 16) {
             if (strncmp(ent->d_name, "event", 5) != 0) continue;
-            char path[280];
+            char path[64];
             snprintf(path, sizeof(path), "/dev/input/%s", ent->d_name);
             int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
             if (fd >= 0) {
