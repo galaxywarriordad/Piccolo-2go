@@ -1,0 +1,96 @@
+name: Verify Piccolo-2go CMake Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      console:
+        description: "Target console under boot/dArkOS/consoles"
+        required: false
+        default: "g350"
+      profile:
+        description: "Clock/voltage profile (safe, default, oc_boost)"
+        required: false
+        default: "default"
+      fetch_arkos4clone:
+        description: "Shallow-clone lcdyk0517/arkos4clone instead of using synthetic test fixture"
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  verify-cmake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Piccolo-2go
+        uses: actions/checkout@v5
+
+      - name: Install CMake and Device Tree Compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake device-tree-compiler
+
+      - name: Prepare DTB Source Input (arkos4clone or Test Fixture)
+        id: prep_dtb_src
+        env:
+          FETCH_ARKOS4CLONE: ${{ inputs.fetch_arkos4clone }}
+          CONSOLE_NAME: ${{ inputs.console || 'g350' }}
+        run: |
+          if [ "${FETCH_ARKOS4CLONE}" = "true" ]; then
+            git clone --depth=1 https://github.com/lcdyk0517/arkos4clone.git /tmp/arkos4clone
+            echo "dtb_src_dir=/tmp/arkos4clone" >> "$GITHUB_OUTPUT"
+          else
+            FIXTURE_ROOT="/tmp/arkos4clone-fixture"
+            CONSOLE_DIR="${FIXTURE_ROOT}/boot/dArkOS/consoles/${CONSOLE_NAME}"
+            mkdir -p "${CONSOLE_DIR}/5.10" "${FIXTURE_ROOT}/boot/dArkOS/consoles/logo/480P"
+            cat <<'EOF' > /tmp/sample-g350.dts
+          /dts-v1/;
+          / {
+              compatible = "rockchip,rk3326-g350-linux", "rockchip,rk3326";
+              model = "Batlexp G350";
+          };
+          EOF
+            dtc -I dts -O dtb -o "${CONSOLE_DIR}/5.10/rk3326-g350-linux.dtb" /tmp/sample-g350.dts
+            printf 'setenv bootargs "loglevel=4"\n' > "${CONSOLE_DIR}/boot.ini"
+            printf 'SPLASH_PLACEHOLDER\n' > "${FIXTURE_ROOT}/boot/dArkOS/consoles/logo/480P/logo.bmp"
+            echo "dtb_src_dir=${FIXTURE_ROOT}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure and Build with CMake
+        env:
+          DTB_SRC_DIR: ${{ steps.prep_dtb_src.outputs.dtb_src_dir }}
+          CONSOLE_NAME: ${{ inputs.console || 'g350' }}
+          PROFILE_NAME: ${{ inputs.profile || 'default' }}
+        run: |
+          cmake -S . -B build-cmake \
+            -DARKOS4CLONE_DIR="${DTB_SRC_DIR}" \
+            -DPICCOLO_CONSOLE="${CONSOLE_NAME}" \
+            -DPICCOLO_KERNEL="5.10" \
+            -DPICCOLO_PROFILE="${PROFILE_NAME}"
+          cmake --build build-cmake --verbose
+
+      - name: Verify Staged Outputs and Decompiled DTS
+        env:
+          PROFILE_NAME: ${{ inputs.profile || 'default' }}
+        run: |
+          test -f build-cmake/stage_boot/boot.ini
+          test -f build-cmake/stage_boot/piccolo-profile.env
+          grep -q "PICCOLO_PROFILE=${PROFILE_NAME}" build-cmake/stage_boot/piccolo-profile.env
+          ls -la build-cmake/stage_boot/*.dtb
+          ls -la build-cmake/*.check.dts
+          grep -q "rockchip,rk3326" build-cmake/*.check.dts
+
+      - name: Upload Staged CMake Verification Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: piccolo-2go-cmake-stage-${{ inputs.profile || 'default' }}
+          path: |
+            build-cmake/stage_boot/piccolo-profile.env
+            build-cmake/stage_boot/boot.ini
+            build-cmake/*.check.dts
+          if-no-files-found: warn
+          retention-days: 7
