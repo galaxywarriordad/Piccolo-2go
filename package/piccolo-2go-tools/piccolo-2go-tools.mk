@@ -1,0 +1,24 @@
+################################################################################
+#
+# piccolo-2go-tools
+#
+################################################################################
+
+PICCOLO_2GO_TOOLS_VERSION = 1.0.0
+PICCOLO_2GO_TOOLS_SITE = $(BR2_EXTERNAL_PICCOLO_2GO_PATH)/package/piccolo-2go-tools/src
+PICCOLO_2GO_TOOLS_SITE_METHOD = local
+PICCOLO_2GO_TOOLS_LICENSE = GPL-3.0
+
+define PICCOLO_2GO_TOOLS_BUILD_CMDS
+	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall -Wextra \
+		$(@D)/dtb-select.c -o $(@D)/dtb-select
+	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall -Wextra \
+		$(@D)/ax-powerd.c -o $(@D)/ax-powerd
+endef
+
+define PICCOLO_2GO_TOOLS_INSTALL_TARGET_CMDS
+	$(INSTALL) -D -m 0755 $(@D)/dtb-select $(TARGET_DIR)/usr/bin/dtb-select
+	$(INSTALL) -D -m 0755 $(@D)/ax-powerd $(TARGET_DIR)/usr/sbin/ax-powerd
+endef
+
+$(eval $(generic-package))
