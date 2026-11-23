@@ -1,0 +1,25 @@
+#!/bin/sh
+# S03piccolo-2go-powerd — Start Core 3 safe KEY_POWER, 75C rollback & 3280 mV battery daemon
+
+PIDFILE="/run/ax-powerd.pid"
+
+case "$1" in
+    start)
+        echo "[Piccolo-2go] Starting Core 3 hardware power & thermal guard (ax-powerd)..."
+        start-stop-daemon -S -b -m -p "$PIDFILE" -x /usr/sbin/ax-powerd
+        ;;
+    stop)
+        echo "[Piccolo-2go] Stopping ax-powerd..."
+        start-stop-daemon -K -p "$PIDFILE" 2>/dev/null || true
+        rm -f "$PIDFILE"
+        ;;
+    restart)
+        "$0" stop
+        "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+exit 0
