@@ -151,6 +151,26 @@ Piccolo-2go/
 6. **Bare-Metal Audio & A/V Engine (GitHub):** [`galaxywarriordad/FLAC_AX`](https://github.com/galaxywarriordad/FLAC_AX.git) — RAM-resident bit-perfect audio player, `ax_av_studio` MIDI/DSP synth workstation, and `ax_video_upscaler` stream pipeline.
 7. **Retro Multi-System Engine (GitHub):** [`galaxywarriordad/Generation-X-AX`](https://github.com/galaxywarriordad/Generation-X-AX.git) — Deterministic multi-console `[AX]` integration across `Flycast` and `RMG`.
 8. **Wii U Engine (GitHub):** [`galaxywarriordad/Cemu-Latte-AX`](https://github.com/galaxywarriordad/Cemu-Latte-AX.git) — Deterministic Nintendo Wii U (Latte GPU) AX engine powered by `ax::sdk`.
+---
+
+## 🎮 Supported Hardware
+
+`Piccolo-2go` is developed, tuned, and primarily validated on the **BATLEXP G350** (`rk3326-g350-linux.dtb`, active by default).
+
+To support the broader Rockchip RK3326 handheld family, the following **community-sourced Device Trees (`.dtb`)** are bundled in `/boot/dtbs/` and selectable via `dtb-select <alias>` (or by copying the matching file to `/boot/rk3326-g350-linux.dtb`). **These additional DTBs are currently untested on `Piccolo-2go`—please open an Issue in this repository if you encounter panel, audio, or control mapping quirks on your revision:**
+
+| `dtb-select` Alias | Bundled `.dtb` Filename | Target Model & How to Identify Your Revision | Status |
+| :--- | :--- | :--- | :--- |
+| **`g350`** | `rk3326-g350-linux.dtb` | **BATLEXP G350** — Vertical 3.5" `640×480` OCA IPS, matte shell, sloped shoulder buttons, single USB-C OTG + USB-C charge port | **Primary / Validated** |
+| **`r36s-panel4`** | `rk3326-r36s-panel4-type1-linux.dtb` | **R36S (Panel 4 / 2024–2026 Revision)** — Most common modern R36S vertical handheld with updated 3.5" `640×480` MIPI DSI panel | Untested *(Community DTB)* |
+| **`r36s-v21`** | `rk3326-r36s-v21-linux.dtb` | **R36S (V21 / V22 Motherboard)** — Newer R36S PCB revision (`V21`/`V22` silkscreened near battery bay) with revised OTG/rumble GPIO routing | Untested *(Community DTB)* |
+| **`r36s-panel0`** | `rk3326-r36s-panel0-linux.dtb` | **R36S (Original / Panel 0)** — First-generation 2023 R36S vertical unit with original `640×480` IPS panel timings | Untested *(Community DTB)* |
+| **`r36s-panel1`** | `rk3326-r36s-panel1-linux.dtb` | **R36S (Panel 1)** — Early second-batch R36S vertical revision (`Panel 1` screen timing variant) | Untested *(Community DTB)* |
+| **`r36s-plus`** | `rk3326-r36splus-linux.dtb` | **R36S Plus (`1:1` Square Screen)** — Widescreen/square `720×720` `1:1` IPS R36S variant | Untested *(Community DTB)* |
+| **`r36h`** | `rk3326-r36h-linux.dtb` | **GameConsole R36H** — Horizontal candybar-form-factor RK3326 handheld (`3.5"` `640×480` IPS, twin thumbsticks below D-pad/buttons) | Untested *(Community DTB)* |
+| **`r46h`** | `rk3326-r46h-linux.dtb` | **GameConsole R46H** — Larger horizontal RK3326 handheld (`4.0"` `720×720` / `640×480` IPS class) | Untested *(Community DTB)* |
+
+> **Hold-Button Safe Recovery:** If you switch to an incompatible `.dtb` and get a black screen, hold **`SELECT`**, **`FN`**, or **`B`** while powering on—`ax-boot-recovery` will automatically restore `rk3326-g350-linux.dtb`, `1.30 GHz` safe CPU clocks, and `666 MHz` DDR3 backup timings.
 
 ## 📄 License
 
