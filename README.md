@@ -1,91 +1,93 @@
-# Piccolo-2go
+# Piccolo-2go (Optimised with AX Tech)
+[![Build & Lint Status](https://shields.io)](https://github.com)
+[![Architecture](https://shields.io)](https://github.com)
+[![Display](https://shields.io)](#2-gpu--lcd-display-pipeline-mali-g31-mp2--vop--35-640480-mipi-dsi-ips)
+[![Audio](https://shields.io)](#4-bit-perfect-audio-dac-subsystem-early-hiby-fc3-13-vrms--rk817-fallback)
+[![License](https://shields.io)](LICENSE)
 
-[![Buildroot CI](https://img.shields.io/badge/CI-Buildroot%20aarch64-brightgreen?style=flat-square)](https://github.com/galaxywarriordad/Piccolo-2go/actions)
-[![Architecture](https://img.shields.io/badge/Arch-AArch64%20Cortex--A35%20%7C%20RK3326-blue?style=flat-square)](#1-121-rk3326-core--irq-topology)
-[![Graphics](https://img.shields.io/badge/Display-KMS%2FDRM%20%26%20Panfrost%20GLES%203.0-orange?style=flat-square)](#1-121-rk3326-core--irq-topology)
-[![Audio](https://img.shields.io/badge/Audio-Bit--Perfect%20S32__LE%20%7C%20HiBy%20FC3-purple?style=flat-square)](#3-bit-perfect-audio-subsystem)
-[![Image Footprint](https://img.shields.io/badge/Footprint-%3C%20180%20MB%20SquashFS-informational?style=flat-square)](#2-dual-sandisk-storage--memory-discipline)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-red?style=flat-square)](LICENSE)
-
-**Piccolo-2go** is a deterministic `aarch64` Buildroot operating system (`< 180 MB` SquashFS rootfs) engineered for the **BATLEXP G350** and **R36S** handheld consoles on **RK3326** silicon, **optimised with AX tech**. Part of **The Silicon Preservation Society** ecosystem, it combines `1:2:1` Cortex-A35 core isolation, `384 MB` `zstd` ZRAM, zero-copy Mali-G31 MP2 KMS/DRM + Panfrost GLES 3.0 rendering, dual SanDisk Extreme PRO (`64 GB` + `128 GB`) storage discipline, `Amiberry` / `Hatari` / `BlastEm` emulation, and bit-perfect `FLAC_AX` `S32_LE` audio tuned for early **HiBy FC3 (`1.3 Vrms`)** USB-C OTG DACs.
-
----
-
-## 🎯 Target Hardware
-
-* **Supported Consoles:** BATLEXP G350 & R36S (`dtb-select` runtime Device Tree resolution)
-* **SoC:** Rockchip RK3326 (Quad-core ARM Cortex-A35 @ 1.5 GHz, in-order pipeline)
-* **GPU:** ARM Mali-G31 MP2 (Open-source Mesa Panfrost GLES 3.0 + KMS/DRM atomic scanout)
-* **Storage Media:** Dual SanDisk Extreme PRO cards (`64 GB` OS slot + `128 GB` portable media slot)
-* **Audio DAC:** External HiBy FC3 USB-C DAC (`1.3 Vrms`, ESS ES9281AC Pro, USB VID `0x32BB`) with automatic fallback to internal Rockchip RK817 codec
+**Piccolo-2go** is a deterministic `aarch64` Buildroot operating system (`128 KB`-block `zstd` SquashFS `< 140 MB`) engineered as a closed, fixed-hardware console and audiophile transport for the **BATLEXP G350** and **R36S** handhelds on **Rockchip RK3326** silicon, **optimised with AX tech**. Part of **The Silicon Preservation Society** ecosystem, it combines `1:2:1` Cortex-A35 core isolation, `1024 MB` `LZ4` ZRAM, zero-compositor Mali-G31 MP2 KMS/DRM + Panfrost GLES 3.0 rendering, dual SanDisk Extreme PRO (`64 GB` + `128 GB`) storage with runtime `SDR50` bus verification, **FinalBurn Neo (`FBNeo`)** arcade bring-up, and bit-perfect `FLAC_AX` `S32_LE` / `DoP` audio tuned for the early **HiBy FC3 (`1.3 Vrms`)** USB-C OTG DAC.
 
 ---
 
 ## ⚙️ Fixed-Hardware Topology & Silicon Specification (Optimised with AX Tech)
 
-`Piccolo-2go` treats the **BATLEXP G350** and **R36S** as a closed, deterministic fixed-hardware appliance rather than a general-purpose Linux PC—mapping every physical bus, interrupt line, and execution plane onto the **Rockchip RK3326** silicon:
+`Piccolo-2go` treats the **BATLEXP G350** and **R36S** as a deterministic fixed-hardware appliance rather than a general-purpose Linux PC—mapping every physical bus, interrupt line, voltage rail, and execution plane onto the **Rockchip RK3326** silicon:
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                  FIXED-HARDWARE APPLIANCE TOPOLOGY — BATLEXP G350 / R36S               │
-│                             Rockchip RK3326 (1.5 GHz) + 1 GB LPDDR3                    │
+│                  Rockchip RK3326 (1.30 / 1.34 / 1.39 GHz) + 1 GB LPDDR3 @ 720 MHz      │
 │                                                                                        │
-│  [ Core 0 (0x01) ] ──► SCHED_FIFO 80 ALSA S32_LE + DWC2 OTG / I2S0 / GPIO+SARADC IRQs  │
+│  [ Core 0 (0x01) ] ──► SCHED_FIFO 80 ALSA S32_LE + DWC2 OTG / I2S0 / GPIO+SARADC IRQs │
 │  [ Core 1 (0x02) ] ──► Mali-G31 MP2 (Panfrost GLES 3.0) ──► VOP ──► 640×480 DSI LCD    │
-│  [ Core 2 (0x04) ] ──► Deterministic 68k / Z80 / MIPS JIT & DSP Worker (L1 Cache Hot)  │
-│  [ Core 3 (0x08) ] ──► SDMMC0/1 DMA IRQs + 384 MB zstd ZRAM + 64 MiB FLAC Preload      │
+│  [ Core 2 (0x04) ] ──► Deterministic FBNeo / JIT & DSP Worker (32 KB L1 Cache Hot)     │
+│  [ Core 3 (0x08) ] ──► SDMMC0/1 DMA IRQs + 1024 MB LZ4 ZRAM + 64 MiB FLAC Preload      │
 ├───────────────────────────────────────────┬────────────────────────────────────────────┤
 │        AUDIO & USB-C OTG SUBSYSTEM        │        DUAL SANDISK EXTREME PRO STORAGE    │
 │  • DWC2 USB-C OTG (Core 0 IRQ)            │  • TF1 (64 GB A2/V30 — OS & Save Slot)     │
 │    └─► Early HiBy FC3 (ES9281AC Pro)      │     ├── p1: BOOT (FAT32, 256 MB, DTBs)     │
-│        1.3 Vrms / 70 mW | S32_LE & DoP    │     ├── p2: ROOTFS (SquashFS zstd, <180MB) │
-│  • I2S0 Fallback ──► RK817 PMIC Codec     │     └── p3: STORAGE (ext4, ~59 GB auto)    │
-│    (3.5 mm Stereo Jack + 1W Mono Speaker) │  • TF2 (128 GB A2/V30 — Media Library)     │
-│  • Controllers: GPIO Matrix + 10-bit ADC  │     └── p1: PICCOLO_MEDIA (exFAT/ext4)     │
-│    (D-Pad, ABXY, L1/L2, R1/R2, Dual Stick)│         /roms, /music (FLAC/MOD), /bios    │
+│        1.3 Vrms / 70 mW | S32_LE & DoP    │     ├── p2: ROOTFS (SquashFS zstd, <140MB) │
+│        + Interactive Connect & Retry      │     └── p3: STORAGE (ext4, ~59 GB auto)    │
+│  • I2S0 Fallback ──► RK817 PMIC Codec     │  • TF2 (128 GB A2/V30 — Media Library)     │
+│    (3.5 mm Stereo Jack + 1W Mono Speaker) │     └── p1: PICCOLO_MEDIA (exFAT/ext4)     │
+│  • Controls: GPIO Matrix + 10-bit SARADC  │         /roms, /music (FLAC/MOD), /bios    │
 └───────────────────────────────────────────┴────────────────────────────────────────────┘
 ```
 
-### 1. CPU & `1:2:1` Core/IRQ Partition (`4× ARM Cortex-A35 @ 1.5 GHz` + `1 GB LPDDR3`)
+### 1. CPU, Memory Bus & `1:2:1` Core/IRQ Partition (`4× ARM Cortex-A35` + `1 GB LPDDR3`)
 
-The Rockchip **RK3326** pairs four dual-issue **in-order ARM Cortex-A35** cores (`32 KB` L1-I / `32 KB` L1-D per core, `256 KB` shared L2) with a `32-bit` `1 GB LPDDR3-1600` (`~6.4 GB/s`) memory bus. Tickless kernel boot flags (`isolcpus=0,1,2 nohz_full=0,1,2 rcu_nocbs=0,1,2`) and `S01piccolo-2go-isolate` lock each core to a single hardware domain:
+The Rockchip **RK3326** pairs four dual-issue **in-order ARM Cortex-A35** cores (`32 KB` L1-I / `32 KB` L1-D per core, `256 KB` shared L2) with a `32-bit` `1 GB LPDDR3` bus. Tickless kernel boot flags (`isolcpus=0,1,2 nohz_full=0,1,2 rcu_nocbs=0,1,2`) and `S01piccolo-2go-isolate` lock each core to a single hardware domain:
 
 | Core | Affinity Mask | Scheduler & Governor | Fixed Hardware Responsibility |
 | :--- | :--- | :--- | :--- |
 | **Core 0** | `0x01` | `SCHED_FIFO` (prio `80`) / `performance` | **Real-Time Audio Clock & Controller IRQ Plane:** Direct ALSA `S32_LE` writer (`192`-frame / `4.00 ms` period); `DWC2` USB-C OTG (`HiBy FC3`), `I2S0` (`RK817`), and `GPIO` / `SARADC` control IRQs |
 | **Core 1** | `0x02` | `SCHED_OTHER` / `performance` | **GPU Submission & Display Scanout Plane:** Drives **Mali-G31 MP2** (`Panfrost` OpenGL ES 3.0) draw calls and atomic `KMS/DRM` page flips to the `640×480` panel |
-| **Core 2** | `0x04` | `SCHED_OTHER` / `performance` | **Deterministic Emulation JIT & DSP Plane:** Runs 68020/AGA JIT, Z80/68k/MIPS emulation (`Amiberry`, `Hatari`, `BlastEm`, `PCSX-ReARMed`) with zero cache eviction |
-| **Core 3** | `0x08` | `SCHED_OTHER` (`nice +5`) / `schedutil` | **Housekeeping & SD Storage DMA Plane:** `dwmmc` (`TF1`/`TF2` SanDisk SD) IRQs, `384 MB` `zstd` ZRAM (`vm.swappiness=100`, `vm.page-cluster=0`), `64 MiB` `FLAC_AX` RAM preloader, `ax_appliance_tui`, and `ax-powerd` |
+| **Core 2** | `0x04` | `SCHED_OTHER` / `performance` | **Deterministic Emulation & DSP Plane:** Runs `FBNeo` / JIT / DSP workers with hot `32 KB` L1 caches and zero cache eviction |
+| **Core 3** | `0x08` | `SCHED_OTHER` (`nice +5`) / `schedutil` | **Housekeeping & SD Storage DMA Plane:** `dwmmc` (`TF1`/`TF2` SanDisk SD) IRQs, `1024 MB` `LZ4` ZRAM (`vm.swappiness=120`, `vm.page-cluster=0`), `64 MiB` `FLAC_AX` RAM preloader, `ax_appliance_tui`, and `ax-powerd` |
+
+- **Safe RK3326 CPU PLL Steps (`24 MHz` Increments, Passive-Cooled Safe):**
+  - `1296000 kHz` (`1.296 GHz` / `1.30 GHz` — Default): Official stock safe ceiling for uncooled BATLEXP G350 / R36S shells (`~42–52°C`).
+  - `1344000 kHz` (`1.344 GHz` / `1.34 GHz` — Sweet-Spot `+48 MHz`): Mild PLL step (`~52–58°C`, set via `CPU_PROFILE=1.34` in `/boot/ax-cpu.conf` or `S01piccolo-2go-isolate set-1.34`).
+  - `1392000 kHz` (`1.392 GHz` / `1.39 GHz` — High `+96 MHz`): Maximum safe ceiling just under the `1.4 GHz` thermal wall (`~58–65°C`, guarded by `ax-powerd` automatic `75°C` rollback).
+
+- **LPDDR3 / DMC Bus Profiles (`RK817 DCDC2` — `VDD_LOGIC`, `12.5 mV` / `12500 µV` Steps):**
+  - `720 MHz` (`1440 MT/s` @ `1112.5 mV` / `1112500 µV` — Default): `max_ddrfreq=720` (`+8.1%` memory bandwidth over stock `666 MHz` with a single `+12.5 mV` step).
+  - `666 MHz` (`1333 MT/s` @ `1100.0 mV` / `1100000 µV` — Safe Backup): Universal fallback profile (`max_ddrfreq=666`) compatible with every clone RAM bin.
+  - `800–900 MHz` (`1600–1800 MT/s` @ `1137.5–1162.5 mV` — Open-Case Only): High-bandwidth enthusiast profile reserved for open-case / heatsinked boards.
 
 ### 2. GPU & LCD Display Pipeline (`Mali-G31 MP2` → `VOP` → `3.5" 640×480 MIPI DSI IPS`)
 
-* **Hardware-Accelerated GPU Rendering (`ARM Mali-G31 MP2`):** Uses the open-source Mesa **Panfrost** OpenGL ES 3.0 driver (`BR2_PACKAGE_MESA3D_GALLIUM_DRIVER_PANFROST=y`) to execute hardware texture uploads, sharp-bilinear / `2×` integer scaling shaders, and frame composition directly on the Bifrost GPU—never falling back to CPU software rendering.
-* **Zero-Compositor Atomic Scanout (`KMS/DRM`):** Renders directly via `SDL_VIDEODRIVER=kmsdrm` into the Rockchip **Video Output Processor (VOP)** over a **4-lane MIPI DSI** bus (`640×480 @ 60.00 Hz`, `4:3` OCA full-laminated IPS display), bypassing X11/Wayland completely (`~35–50 MB` LPDDR3 saved, zero extra buffer copy).
-* **Multi-Panel Device Tree Resolution (`dtb-select`):** Resolves MIPI DSI panel initialization sequences across **BATLEXP G350** and **R36S** (`Panel 0`–`Panel 4`) hardware revisions at runtime.
+- **Hardware-Accelerated GPU Rendering (`ARM Mali-G31 MP2`):** Uses Mesa **Panfrost** OpenGL ES 3.0 (`BR2_PACKAGE_MESA3D_GALLIUM_DRIVER_PANFROST=y`) for hardware texture uploads, `2×` integer/sharp-bilinear scaling shaders, and atomic `KMS/DRM` scanout (`SDL_VIDEODRIVER=kmsdrm`) onto the `640×480 @ 60.00 Hz` `4:3` OCA IPS panel—with zero X11/Wayland compositor overhead (`~35–50 MB` LPDDR3 saved).
+- **Mali-G31 MP2 Voltage-Scaled OPP Ladder (`12.5 mV` / `12500 µV` RK817 Steps):**
+  - `520 MHz` (`1100.0 mV` / `1100000 µV`): Default stock ceiling (`max_gpufreq=520`).
+  - `550 MHz` (`1112.5 mV` / `1112500 µV`, `+1` step): Sweet-spot mild boost (`+5.8%` shader/fillrate, minimal heat).
+  - `600 MHz` (`1137.5 mV` / `1137500 µV`, `+3` steps): High GPU boost (`+15.4%` shader/fillrate).
+  - `650–660 MHz` (`1162.5–1175.0 mV` / `1162500–1175000 µV`, `+5–6` steps): Max PLL ceiling (`+26.9%`, silicon-lottery dependent; guarded by `75°C` thermal rollback).
+- **Multi-Board Device Tree Resolution (`dtb-select`):** Ships instant aliases (`g350`, `r36s-panel0..4`, `r36s-v21`, `r36s-plus`, `r36s-pro`, `r36s-xx`, `r36s-t1-p1..5`, `r36s-t2-p1..2`) to resolve MIPI DSI panel timings across BATLEXP G350 and R36S revisions.
 
-### 3. Physical Controls & Haptic Feedback (`GPIO Matrix` + `SARADC`)
+### 3. Physical Controls & Safe Power Guard (`GPIO Matrix` + `SARADC` + `ax-powerd`)
 
-* **Zero-Latency Input Polling (`Core 0` IRQ):** Dedicated GPIO lines handle the D-pad, quiet face buttons (`A/B/X/Y`), sloped rear shoulder triggers (`L1/L2`, `R1/R2`), `Start`, `Select`, `FN`, and `KEY_POWER` (intercepted by `ax-powerd` for `1.5s`-hold safe shutdown).
-* **Dual Switch-Style Analog Thumbsticks:** Sampled via the RK3326's 4-channel `10-bit` **SARADC** controller with hardware-calibrated deadzones, alongside PWM control for the internal vibration motor.
+- **Zero-Latency Input (`Core 0` IRQ):** Dedicated GPIO lines handle the D-pad, quiet face buttons (`A/B/X/Y`), sloped shoulder triggers (`L1/L2`, `R1/R2`), `Start`, `Select`, `FN` (`BTN_TRIGGER_HAPPY5` / `BTN_MODE`), and `KEY_POWER`, while the 10-bit **SARADC** samples dual analog thumbsticks.
+- **Core 3 Hardware Protection Daemon (`ax-powerd`):** Intercepts `1.5s` `KEY_POWER` hold (or `FN + Power`) to release the HiBy FC3 DAC (`SIGUSR1`), flush saves, unmount both SanDisk cards, and power off safely—while enforcing `75°C` thermal clock rollback and `3280 mV` LiPo brownout shutdown.
 
 ### 4. Bit-Perfect Audio DAC Subsystem (`Early HiBy FC3 1.3 Vrms` + `RK817` Fallback)
 
-* **Primary USB-C OTG DAC — Early HiBy FC3 (`ESS ES9281AC Pro`, `1.3 Vrms / 70 mW @ 32 Ω`, VID `0x32BB`):**
-  * Hot-plugged via the `DWC2` USB-C OTG port (`99-ax-2go-otg.rules`), locking `power/control="on"` (zero USB autosuspend clicks) and bypassing PulseAudio/PipeWire/software resampling (`snd_pcm_hw_params_set_rate_resample(0)`).
-  * Streams native `32-bit` integer **`S32_LE` (`44.1–384 kHz`)** and hardware **`DoP` (`DSD64` `176.4 kHz` / `DSD128` `352.8 kHz`)** with hardware attenuator presets (`fc3_1v3`): `--volume 0.95` (portable speakers/line-out), `0.65` (wired headphones), and `0.35` (sensitive `16–32 Ω` IEMs).
-* **Internal Codec Fallback — Rockchip `RK817` (`I2S0`):**
-  * Automatically powers down its Class-D speaker amp when the HiBy FC3 is attached (eliminating PMIC rail noise), and seamlessly resumes driving the `3.5 mm` stereo headphone jack and bottom-firing mono speaker when the USB-C DAC is unplugged.
+- **Primary USB-C OTG DAC — Early HiBy FC3 (`ESS ES9281AC Pro`, `1.3 Vrms / 70 mW @ 32 Ω`, VID `0x32BB`):**
+  - Hot-plugged via `99-ax-2go-otg.rules` and `/usr/sbin/ax-audio-route`, locking `power/control="on"` (zero USB autosuspend clicks) and bypassing PulseAudio/PipeWire/software resampling (`snd_pcm_hw_params_set_rate_resample(0)`).
+  - Streams bit-perfect `32-bit` integer **`S32_LE` (`44.1–384 kHz`)** and hardware **`DoP` (`DSD64` `176.4 kHz` / `DSD128` `352.8 kHz`)** with `fc3_1v3` hardware attenuator presets (`--volume 0.95` portable speakers, `0.65` wired headphones, `0.35` sensitive `16–32 Ω` IEMs).
+- **Interactive Connect & Retry (`ax-audio-route prompt`):** If the HiBy FC3 is unplugged when launching audio, `Piccolo-2go` prompts you to plug in the USB-C OTG DAC and retry (`[R]`) or fall back cleanly (`[S]`) to the internal **RK817** codec (`3.5 mm` jack + mono speaker) with pop-free path switching.
 
-### 5. Dual SanDisk Extreme PRO Storage Architecture (`64 GB TF1` + `128 GB TF2`)
+### 5. Dual SanDisk Extreme PRO Storage (`64 GB TF1` + `128 GB TF2`) & `1024 MB LZ4` ZRAM
 
-* **TF1 — OS & Save Slot (`64 GB` SanDisk Extreme PRO `A2` / `V30`):**
-  * `p1` (`FAT32`, `256 MB`): Boot partition housing U-Boot artifacts, `LZ4`-compressed pruned `linux-rk3326.fragment` kernel `Image` (`< 180 ms` decompression, `~110 MB` LPDDR3 reclaimed), `boot.ini`, and `/boot/dtbs/`.
-  * `p2` (`SquashFS zstd`, `128 KB` blocks, `< 160 MB`): Immutable, read-only root filesystem—immune to corruption on sudden power loss.
-  * `p3` (`ext4`, `~59 GB`): Auto-expanded on first boot (`S02piccolo-2go-storage`) for persistent save states, shader caches, and local fallback `/userdata`.
-* **TF2 — Portable Media Slot (`128 GB` SanDisk Extreme PRO `A2` / `V30`):**
-  * `p1` (`exFAT` / `ext4`, `~119 GB`): Dedicated media card automatically bound to `/userdata/{roms,music,bios}` on boot—streaming compressed `.chd` (CD32/PS1), `.lha`/`.zip`, lossless `.flac` / `DoP` albums, and `.mod`/`.xm`/`.s3m`/`.it` trackers with `~50 MB/s` effective throughput.
-* **Memory & `512 MB` `LZ4` ZRAM Discipline (`1 GB LPDDR3`):**
-  * Configures a **`512 MB` `lz4`-compressed ZRAM swap device** (`~650 MB/s` in-order Cortex-A35 decompression, `vm.swappiness=120`, `vm.page-cluster=0`, `vm.watermark_boost_factor=0`), bounded `/tmp` (`32 MB`) and `/run` (`16 MB`) `tmpfs`, and a `64 MiB` `FLAC_AX` `SingleFile` preload cap—delivering `~1.18 GB` effective working memory with zero microSD flash wear.
+- **TF1 — OS & Save Slot (`64 GB` SanDisk Extreme PRO `A2` / `V30`):**
+  - `p1` (`FAT32`, `256 MB`): `LZ4`-compressed pruned `linux-rk3326.fragment` kernel `Image` (`< 180 ms` boot decompression, `~110 MB` LPDDR3 reclaimed), `boot.ini`, and `/boot/dtbs/`.
+  - `p2` (`SquashFS zstd`, `128 KB` blocks, `< 140 MB`): Immutable, read-only root filesystem immune to sudden power loss.
+  - `p3` (`ext4`, `~59 GB`): Auto-expanded on first boot (`S02piccolo-2go-storage`, `noatime,nodiratime,commit=60,data=writeback`) for saves and configs.
+- **TF2 — Portable Media Slot (`128 GB` SanDisk Extreme PRO `A2` / `V30`):**
+  - `p1` (`exFAT` / `ext4`, `~119 GB`): Dedicated media card automatically bound to `/userdata/{roms,music,bios}` on boot for FBNeo arcade/Neo Geo ROMs, lossless `.flac` / `DoP` albums, and `.mod`/`.xm`/`.s3m`/`.it` tracker libraries.
+- **Automatic SDR50 Bus Verification & `1024 MB LZ4` ZRAM:**
+  - `S02piccolo-2go-storage` probes `mmc0` (`TF1`) and `mmc1` (`TF2`) at boot to verify `SDR50` (`50 MHz`, `3.3V` signaling, `~24 MB/s`)—automatically stripping unstable `SDR104` on fixed-`3.3V` `VQMMC` boards or flashing a console warning and locking safe `25 MHz` High-Speed mode if CRC tuning fails.
+  - Configures `1024 MB` `lz4` ZRAM (`~650 MB/s` in-order Cortex-A35 decompression, `vm.swappiness=120`, `vm.page-cluster=0`, `vm.watermark_scale_factor=125`) alongside bounded `/tmp` (`32 MB`) and `/run` (`16 MB`) tmpfs.
 
 ---
 
@@ -93,55 +95,56 @@ The Rockchip **RK3326** pairs four dual-issue **in-order ARM Cortex-A35** cores 
 
 ```text
 Piccolo-2go/
-├── Config.in                          # Buildroot external Kconfig menu entries
-├── external.desc                      # Buildroot external tree descriptor (PICCOLO_2GO)
-├── external.mk                        # External package & board Makefile hooks
+├── .github/workflows/
+│   └── ci.yml                                       # Automated ShellCheck & aarch64 C tool validation
+├── board/piccolo-2go/
+│   ├── boot.ini                                     # U-Boot bootargs (1296 MHz CPU, 520 MHz GPU, 720 MHz DDR3)
+│   ├── genimage.cfg                                 # Dual-partition MBR sdcard.img layout (BOOT + ROOTFS)
+│   ├── linux-rk3326.fragment                        # Pruned RK3326 kernel config (LZ4, NO_HZ_FULL, 64 MB CMA)
+│   ├── post-build.sh                                # Permissions, boot.ini staging & lvp Vulkan ICD purge
+│   ├── post-image.sh                                # Final sdcard.img assembly via genimage
+│   └── rootfs-overlay/
+│       ├── etc/init.d/
+│       │   ├── S01piccolo-2go-isolate               # 1:2:1 core/IRQ pinning, 1024 MB LZ4 ZRAM & 1.30-1.39 GHz PLL
+│       │   └── S02piccolo-2go-storage               # Dual SanDisk (64 GB + 128 GB) mounter & SDR50 bus guard
+│       ├── etc/udev/rules.d/
+│       │   └── 99-ax-2go-otg.rules                  # Early HiBy FC3 1.3 Vrms & MIDI zero-autosuspend rules
+│       └── usr/sbin/
+│           └── ax-audio-route                       # HiBy FC3 detector with interactive Connect & Retry prompt
 ├── configs/
-│   └── piccolo_2go_rk3326_defconfig   # Master < 180 MB aarch64 defconfig
-├── board/
-│   └── piccolo-2go/
-│       ├── linux-rk3326.fragment      # Pruned RK3326 kernel configuration fragment
-│       ├── post-build.sh              # Rootfs staging, permissions, and version stamping
-│       ├── post-image.sh              # Genimage TF1 FAT32 + SquashFS + ext4 image assembly
-│       ├── genimage.cfg               # Partition table layout for TF1 boot/rootfs/storage
-│       └── rootfs-overlay/
-│           ├── etc/
-│           │   ├── init.d/
-│           │   │   ├── S01piccolo-2go-isolate   # Core 0-2 isolcpus, IRQ affinity & governor setup
-│           │   │   └── S02piccolo-2go-storage   # TF1 p3 auto-expansion & TF2 media mount
-│           │   └── udev/rules.d/
-│           │       └── 99-ax-2go-otg.rules      # HiBy FC3 OTG detection, gain staging & RK817 fallback
-└── package/
-    └── piccolo-2go-tools/
-        ├── Config.in                  # System utilities package selection
-        ├── piccolo-2go-tools.mk       # Build instructions for native aarch64 C/C++ tools
-        └── src/
-            ├── dtb-select.c           # Hardware revision & panel DTB selector (G350 / R36S)
-            └── ax-powerd.c            # Low-overhead battery, thermal & power button daemon
-```     
----
-
-## Silicon Preservation Society Ecosystem
-
-### Core Repositories (8)
-
-1. **Shared Silicon SDK (GitHub):** [`galaxywarriordad/ax-sdk`](https://github.com/galaxywarriordad/ax-sdk.git) — Shared dependency-free C++20 deterministic hardware runtime (`ax::sdk` / `v1_36_2`), dynamic Intel SMT / AMD CCX topology resolver, platform shims, and master architecture specs.
-2. **Linux USB Console & A/V Appliance (GitHub):** [`galaxywarriordad/Piccolo-AX`](https://github.com/galaxywarriordad/Piccolo-AX.git) — Standalone `< 300 MB` `toram` EROFS Batocera / Buildroot `Linux 6.12-rt` `x86_64` appliance (`batocera-ax-external`) with direct ALSA `SCHED_FIFO` and `iHD` VA-API `dma_buf`.
-3. **Linux Handheld Appliance (GitHub):** [`galaxywarriordad/Piccolo-2go`](https://github.com/galaxywarriordad/Piccolo-2go.git) — Deterministic Buildroot `aarch64` (`RK3326` `1:2:1`) retro handheld OS for **BATLEXP G350** and **R36S**.
-4. **Optional Desktop Tier (GitHub):** [`galaxywarriordad/piccolo-ax-desktop`](https://github.com/galaxywarriordad/piccolo-ax-desktop.git) — On-demand C/C++ LXQt/X11 desktop workbench (`< 42 MB` budget).
-5. **Commodore Amiga Engine (GitHub):** [`galaxywarriordad/Amiberry-AX`](https://github.com/galaxywarriordad/Amiberry-AX.git) — Deterministic Commodore Amiga 500 / 1200 / CD32 engine linked against `ax-sdk`.
-6. **Bare-Metal Audio & A/V Engine (GitHub):** [`galaxywarriordad/FLAC_AX`](https://github.com/galaxywarriordad/FLAC_AX.git) — RAM-resident bit-perfect audio player, `ax_av_studio` MIDI/DSP synth workstation, and `ax_video_upscaler` stream pipeline.
-7. **Retro Multi-System Engine (GitHub):** [`galaxywarriordad/Generation-X-AX`](https://github.com/galaxywarriordad/Generation-X-AX.git) — Deterministic multi-console `[AX]` integration across `Flycast` and `RMG`.
-8. **Wii U Engine (GitHub):** [`galaxywarriordad/Cemu-Latte-AX`](https://github.com/galaxywarriordad/Cemu-Latte-AX.git) — Deterministic Nintendo Wii U (Latte GPU) AX engine powered by `ax::sdk`.
-
-### Sister & Downstream Forks
-
-- **Main Switch Engine Fork (Forgejo):** [`galaxywarriordad/Eden-Espresso-Wave-AX`](https://git.eden-emu.dev/galaxywarriordad/Eden-Espresso-Wave-AX.git) — Deterministic Nintendo Switch fork tuned for `ax::sdk` core topology, Vulkan telemetry, and low-latency audio, kept aligned with upstream for frictionless PR cherry-picks.
-- **Upstream Ecosystem Hub (Forgejo):** [`eden-emu/eden`](https://git.eden-emu.dev/eden-emu/eden/) — Upstream Eden Switch emulator reference repository.
+│   └── piccolo_2go_rk3326_defconfig                 # Buildroot aarch64 defconfig (FLAC_AX + FBNeo + Panfrost)
+├── docs/
+│   ├── BUILDING.md                                  # Buildroot compilation & flashing reference
+│   ├── Piccolo_2go_Complete_User_Guide.md           # Full hardware manual, audio & 1:2:1 engineering guide
+│   └── Piccolo_2go_Installation_and_First_Boot.md   # Step-by-step dual SanDisk setup & DTB calibration
+├── package/piccolo-2go-tools/
+│   ├── Config.in                                    # Kconfig definition for native C utilities
+│   ├── piccolo-2go-tools.mk                         # Buildroot target build recipe
+│   └── src/
+│       ├── dtb-select.c                             # Runtime DTB panel selector (G350 & all R36S variants)
+│       └── ax-powerd.c                              # Core 3 safe KEY_POWER, 75C rollback & 3280 mV guard
+├── Config.in                                        # Root BR2_EXTERNAL Kconfig menu
+├── external.desc                                    # Buildroot external tree descriptor (PICCOLO_2GO)
+├── external.mk                                      # Buildroot external package include hook
+├── LICENSE                                          # GNU General Public License v3.0
+└── README.md                                        # Project overview & fixed-hardware topology
+```
 
 ---
 
-## 🤝 Contributing, License & Acknowledgements
+## 🌐 Silicon Preservation Society Ecosystem
 
-* **Contributing:** See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) for Buildroot hygiene and hardware-ownership policies.
-* **License & Acknowledgements:** Licensed under **GPL-3.0** ([LICENSE](LICENSE)). Branched from [Eden Espresso Wave `[AX]`](https://git.eden-emu.dev/galaxywarriordad/Eden-Espresso-Wave-AX) and built on [Batocera Linux](https://github.com/batocera-linux/batocera.linux) and Buildroot. **Contains no proprietary console firmware, decryption keys, or games.**
+- **ax-sdk** — Shared dependency-free C++20 deterministic hardware runtime (`v1_36_2`).
+- **Piccolo-AX** — Deterministic `x86_64` Buildroot / Linux `6.12-rt` bare-metal console & A/V appliance (`batocera-ax-external`).
+- **Piccolo-2go** — Deterministic `aarch64` (`RK3326` `1:2:1`) fixed-hardware handheld OS for BATLEXP G350 & R36S.
+- **piccolo-ax-desktop** — Optional on-demand C/C++ LXQt/X11 desktop workbench (`< 42 MB` budget).
+- **FLAC_AX** — Bit-perfect `S32_LE` / `DoP` audiophile transport, `libopenmpt` tracker jukebox, A/V studio, upscaler & Espresso TUI.
+- **Amiberry-AX** — Deterministic Commodore Amiga 500 / 1200 / CD32 engine linked against `ax-sdk`.
+- **Generation-X-AX** — Cycle-accurate Sega Mega Drive / Genesis (BlastEm) & Atari ST (Hatari) engines.
+- **Cemu-Latte-AX** — Deterministic Wii U execution engine (`2:3:1` topology).
+
+---
+
+## 📄 License
+
+Released under the GNU General Public License v3.0.
