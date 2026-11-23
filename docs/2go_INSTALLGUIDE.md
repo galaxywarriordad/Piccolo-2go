@@ -1,68 +1,100 @@
-## 3. 🚀 Step-by-Step Installation & First-Boot Setup
+# 🚀 Piccolo-2go — Installation & First-Boot Setup Guide
 
-### 💿 Step 1: Flash `TF1` (`64 GB` SanDisk Extreme PRO)
+* **Target Hardware:** BATLEXP G350 & R36S Handheld Consoles (`dtb-select` runtime panel selector)
+* **SoC & PMIC:** Rockchip RK3326 (`4× ARM Cortex-A35`, `ARM Mali-G31 MP2`, `1 GB LPDDR3`) + Rockchip `RK817`
+* **Firmware:** `Piccolo-2go` (`aarch64` Buildroot `BR2_EXTERNAL`, `128 KB`-block `zstd` SquashFS `< 140 MB`)
+* **Ecosystem:** **The Silicon Preservation Society** (Optimised with AX Tech)
 
-1. Download or build `sdcard.img` (`output/images/sdcard.img`).
-2. Flash `sdcard.img` onto your **64 GB SanDisk Extreme PRO** using **Rufus** (Windows), **balenaEtcher** (Windows/macOS/Linux), or `dd` on Linux:
+**Piccolo-2go** is a deterministic 64-bit (`aarch64`) Buildroot operating system (`128 KB`-block `zstd` SquashFS `< 140 MB`) engineered as a closed, fixed-hardware retro console and bit-perfect audiophile transport for the **BATLEXP G350** and **R36S** handhelds on **Rockchip RK3326** silicon. This guide covers flashing the `TF1` (`64 GB`) OS image, preparing the `TF2` (`128 GB`) media card, selecting Device Tree Blobs (`DTBs`), performing safe shutdowns via `ax-powerd`, and applying on-device hardware and clock calibrations.
 
-   ```sh
-   sudo dd if=sdcard.img of=/dev/sdX bs=4M status=progress conv=fsync
-   ```
+---
 
-3. **Select Your Device Tree (DTB) on `BOOT` (`p1`):**
-   * Re-insert the `64 GB` card into your PC and open the `BOOT` (`FAT32`) partition.
-   * Copy the matching `.dtb` for your hardware to the root of `BOOT` renamed as **`rk3326-linux.dtb`**:
-     * **BATLEXP G350 (Default):** Copy `dtbs/rk3326-batlexp-g350.dtb` → `rk3326-linux.dtb`
-     * **R36S (Original V1 Screen):** Copy `dtbs/rk3326-r36s-v1.dtb` → `rk3326-linux.dtb`
-     * **R36S (Panel 4 Revision):** Copy `dtbs/rk3326-r36s-panel4.dtb` → `rk3326-linux.dtb`
+## 💿 1. Flash `TF1` (`64 GB` SanDisk Extreme PRO) & Select DTB
 
-> 💡 **Tip:** If you ever boot with a black screen on a clone revision, swap `rk3326-linux.dtb` on `BOOT`—or run `dtb-select g350` / `dtb-select r36s-panel4` over SSH/serial[cite: 2].
+### 🛠️ Flash `sdcard.img` to `TF1`
 
-### 📂 Step 2: Prepare `TF2` (`128 GB` SanDisk Extreme PRO)
+1. Obtain or compile `sdcard.img` (`build-piccolo-2go/images/sdcard.img` or `output/images/sdcard.img`).
+2. Flash `sdcard.img` onto your **64 GB SanDisk Extreme PRO (`A2` / `V30`)** card using **Rufus** (Windows), **balenaEtcher** (Windows/macOS/Linux), or `dd` on Linux:
 
-1. Format your **128 GB SanDisk Extreme PRO** as a single **`exFAT`** (or `ext4`) partition labeled `PICCOLO_MEDIA`.
-2. Create three top-level folders on `TF2`:
+```sh
+sudo dd if=sdcard.img of=/dev/sdX bs=4M status=progress conv=fsync
+```
+
+### 🖥️ Select Your Device Tree (DTB) on `BOOT` (`p1`)
+
+1. Re-insert the `64 GB` card into your host PC and open the `BOOT` (`256 MB`, `FAT32`) partition.
+2. Copy the matching `.dtb` for your handheld revision to the root of `BOOT` as **`rk3326-linux.dtb`**:
+   * **BATLEXP G350 (Default):** Copy `dtbs/rk3326-batlexp-g350.dtb` → `rk3326-linux.dtb`
+   * **R36S (Original V1 Screen):** Copy `dtbs/rk3326-r36s-v1.dtb` → `rk3326-linux.dtb`
+   * **R36S (Panel 4 Revision):** Copy `dtbs/rk3326-r36s-panel4.dtb` → `rk3326-linux.dtb`
+
+> 💡 **Tip:** If you boot to a black screen on a clone or panel revision, swap `rk3326-linux.dtb` on `BOOT`—or run `dtb-select` (`g350`, `r36s-panel0..4`, `r36s-v21`, `r36s-plus`, `r36s-pro`, `r36s-xx`, `r36s-t1-p1..5`, `r36s-t2-p1..2`) over SSH/serial.
+
+---
+
+## 📂 2. Prepare `TF2` (`128 GB` SanDisk Extreme PRO)
+
+### 🗂️ Partition & Directory Layout
+
+1. Format your **128 GB SanDisk Extreme PRO (`A2` / `V30`)** card as a single **`exFAT`** (or `ext4`) partition labeled `PICCOLO_MEDIA` (`~119 GB` usable).
+2. Create three top-level directories on `TF2` (automatically bound to `/userdata/{roms,music,bios}` on boot by `S02piccolo-2go-storage`):
    * `roms/` (`amiga`, `amigacd32`, `atarist`, `megadrive`, `psx`, `snes`, `gba`, `arcade`)
-   * `music/` (your lossless `.flac` albums, `.dsf`/`.dff` DSD files, and Amiga/ST `.mod`/`.xm`/`.s3m`/`.it` tracker modules)
-   * `bios/` (Amiga Kickstart `kick34005.A500` / `kick40068.A1200`, Atari ST `tos.img`, PS1 `scph5501.bin`)[cite: 2]
+   * `music/` (lossless `.flac` albums, `.dsf`/`.dff` `DSD64`/`DSD128` files, and `.mod`/`.xm`/`.s3m`/`.it` tracker modules)
+   * `bios/` (Amiga Kickstart `kick34005.A500` / `kick40068.A1200`, Atari ST `tos.img`, PS1 `scph5501.bin`)
 
-### ⚡ Step 3: First Boot & Safe Shutdown
+---
 
-1. Insert the **64 GB** card into **`TF1` (OS)** and the **128 GB** card into **`TF2` (Media)**.
-2. Hold the **Power** button for ~2 seconds to boot. On first boot, `S02piccolo-2go-storage` automatically expands `TF1` `p3` (`~59 GB` `ext4`) and binds `TF2` (`128 GB`) into `/userdata`.
-3. **Safe Shutdown (`ax-powerd`):** Always **hold the Power button for `1.5` seconds** to power off. `ax-powerd` (pinned to Core `3`) sends `SIGUSR1` to release the HiBy FC3 DAC cleanly, flushes save files, unmounts both SanDisk cards, and powers down the RK817 PMIC without SD corruption[cite: 2].
+## ⚡ 3. First Boot, Storage Expansion & Safe Shutdown (`ax-powerd`)
 
-### 🔧 Step 4: On-Device Hardware Calibration & Clock Profile (`dtb-select` & `fdtput`)
+### ▶️ First Boot & Automatic `SDR50` Verification
 
-Because the **BATLEXP G350** and **R36S** ship across multiple factory revisions with different MIPI DSI panels, analog stick wiring, and battery fuel-gauge values, `Piccolo-2go` includes `dtc` (`fdtput`) so you can calibrate your exact board directly on the handheld (or via SSH/serial):
+1. Keep your stock factory microSD card safely stored as a backup, then insert the **64 GB** card into **`TF1` (OS)** and the **128 GB** card into **`TF2` (Media)**.
+2. Hold the **Power** button for `~2` seconds to boot. On first boot, `S02piccolo-2go-storage` verifies **`SDR50` (`50 MHz`, `3.3V` signaling, `~24 MB/s`)** across `mmc0` and `mmc1`, expands `TF1` `p3` (`~59 GB` `ext4`, `noatime,nodiratime,commit=60,data=writeback`), initializes `1024 MB` `LZ4` ZRAM, and binds `TF2` into `/userdata`.
 
-1. **Preserve Your Factory Stock DTB (Recommended Backup):**
-   * Before formatting your original factory microSD card, copy its `.dtb` file (`rk3326-rg351mp-linux.dtb` or `rk3326-r36s-linux.dtb`) into `/boot/dtbs/factory-backup.dtb` on your **64 GB SanDisk Extreme PRO (`TF1`)**. If you ever encounter a new screen revision, `dtb-select factory-backup.dtb` restores exact stock panel timings immediately.
+### 🔌 Safe Shutdown (`ax-powerd` on `Core 3`)
 
-2. **Calibrate the BATLEXP G350 `3,200 mAh` Battery Fuel Gauge (`rk817`):**
-   * Many R36S DTBs default to `2500–3000 mAh`, causing inaccurate battery percentages on the G350's **3,200 mAh** LiPo cell. `Piccolo-2go` sets `design_capacity` and `design_qmax` to **`3200` mAh (`0x0c80`)** in the `rk817` battery node:
-     ```sh
-     fdtput -t i /boot/rk3326-linux.dtb /i2c@ff3c0000/rk817@20/battery design_capacity 3200
-     fdtput -t i /boot/rk3326-linux.dtb /i2c@ff3c0000/rk817@20/battery design_qmax 3200
-     ```
+* **Always hold `KEY_POWER` for `1.5` seconds** (or press `FN + Power`) to power off. `ax-powerd` sends `SIGUSR1` to release the **HiBy FC3 (`1.3 Vrms`, VID `0x32BB`)** USB-C OTG DAC cleanly, flushes saves, unmounts both SanDisk cards, and powers down the `RK817` PMIC without SD corruption.
 
-3. **Gate Unused Onboard SDIO Wi-Fi (`dwmmc@ff380000`):**
-   * Neither the BATLEXP G350 nor the R36S has built-in Wi-Fi. Disabling the unpopulated `dwmmc@ff380000` SDIO controller in the DTB eliminates idle clock/pin leakage and saves battery (USB-C OTG Wi-Fi dongles remain unaffected):
-     ```sh
-     fdtput -t s /boot/rk3326-linux.dtb /dwmmc@ff380000 status "disabled"
-     ```
+---
 
-4. **Fix Inverted Analog Sticks or Deadzones (`odroidgo3-joypad`):**
-   * If a board revision has inverted X/Y thumbstick axes, toggle the `invert-abs*` properties directly in `/boot/rk3326-linux.dtb` without recompiling anything:
-     ```sh
-     # Example: invert Left-Y or Right-X axis if reversed on your board
-     fdtput -t empty /boot/rk3326-linux.dtb /odroidgo3-joypad invert-absy
-     fdtput -t i /boot/rk3326-linux.dtb /odroidgo3-joypad button-adc-deadzone 120
-     ```
+## 🔧 4. On-Device Hardware Calibration & Clock Profiles (`dtb-select` & `fdtput`)
 
-5. **Authentic `50 Hz` PAL vs. `60 Hz` NTSC Panel Refresh Switching:**
-   * For silky-smooth `50.00 Hz` scrolling in **Amiberry** (Commodore Amiga) and **Hatari** (Atari ST) without `50→60 Hz` frame duplication, switch the `panel@0` `native-mode` phandle to the `50 Hz` timing node when supported by your panel, then reboot.
+Because **BATLEXP G350** and **R36S** boards ship across multiple revisions with different MIPI DSI panels, thumbstick wiring, and battery fuel-gauge defaults, `Piccolo-2go` provides `dtb-select` and `dtc` (`fdtput`) for direct on-device or SSH/serial calibration:
 
-6. **CPU Clock & Thermal Profile (`1.3 GHz` Safe Default vs. `1.4 GHz` Overclock):**
-   * **Default Safe Mode (`1.296 GHz` / `1.3 GHz`):** Locked out of the box in `S01piccolo-2go-isolate` because the BATLEXP G350 and R36S have passive, unvented shells that overheat at `1.4–1.5 GHz`. Keeps SoC temperatures around `40–52°C` with zero thermal throttling.
-   * **Opt-In `1.4 GHz` Overclock (`1416000 kHz`):** For demanding PlayStation 1 or AGA Amiga titles (recommended if you have added a thin copper heatsink shim), create `/boot/ax-cpu.conf` containing `OVERCLOCK_1400=1`. `ax-powerd` monitors `thermal_zone0` and automatically steps the cluster back down to `1.3 GHz` if temperatures reach `75°C`.
+### 💾 Backup Your Stock DTB
+
+* Copy your original factory DTB into `/boot/dtbs/factory-backup.dtb` on `TF1` before overwriting it so you can restore stock panel timings anytime via `dtb-select factory-backup.dtb`.
+
+### 🔋 Calibrate the BATLEXP G350 `3,200 mAh` Battery Fuel Gauge (`rk817`)
+
+* Update `design_capacity` and `design_qmax` to **`3200` mAh (`0x0c80`)** in the `rk817` battery node so battery percentage reporting matches the G350's `3,200 mAh` LiPo cell:
+
+```sh
+fdtput -t i /boot/rk3326-linux.dtb /i2c@ff3c0000/rk817@20/battery design_capacity 3200
+fdtput -t i /boot/rk3326-linux.dtb /i2c@ff3c0000/rk817@20/battery design_qmax 3200
+```
+
+### 📡 Gate Unused Onboard SDIO Wi-Fi (`dwmmc@ff380000`)
+
+* Disable the unpopulated onboard SDIO controller in the DTB to reduce idle clock/pin leakage while keeping USB-C OTG adapters functional:
+
+```sh
+fdtput -t s /boot/rk3326-linux.dtb /dwmmc@ff380000 status "disabled"
+```
+
+### 🎮 Fix Inverted Analog Axes or Deadzones (`odroidgo3-joypad`)
+
+* Toggle axis inversion or analog deadzone values directly in `/boot/rk3326-linux.dtb` without recompiling:
+
+```sh
+fdtput -t empty /boot/rk3326-linux.dtb /odroidgo3-joypad invert-absy
+fdtput -t i /boot/rk3326-linux.dtb /odroidgo3-joypad button-adc-deadzone 120
+```
+
+### 🖥️ `50 Hz` PAL vs. `60 Hz` NTSC Panel Refresh & CPU Clock/Thermal Profiles
+
+* **Authentic `50 Hz` PAL Refresh:** Point `panel@0` `native-mode` to your panel's `50.00 Hz` timing node when supported for tear-free **Amiberry** (Amiga) and **Hatari** (Atari ST) scrolling, then reboot.
+* **RK3326 CPU PLL Steps (`24 MHz` Increments, `720 MHz` LPDDR3 @ `1112.5 mV` Default):**
+  * `1296000 kHz` (`1.296 GHz` / `1.30 GHz` — Default): Stock safe ceiling for passive, unvented shells (`~42–52°C`).
+  * `1344000 kHz` (`1.344 GHz` / `1.34 GHz` — Sweet-Spot `+48 MHz`): Configured via `CPU_PROFILE=1.34` in `/boot/ax-cpu.conf` or `S01piccolo-2go-isolate set-1.34` (`~52–58°C`).
+  * `1392000 kHz` (`1.392 GHz` / `1.39 GHz` — High `+96 MHz`): High ceiling just under `1.4 GHz` (`~58–65°C`), guarded by `ax-powerd` automatic **`75°C`** thermal rollback and **`3280 mV`** LiPo brownout shutdown.
