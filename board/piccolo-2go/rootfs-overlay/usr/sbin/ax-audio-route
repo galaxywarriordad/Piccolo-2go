@@ -1,0 +1,80 @@
+#!/bin/sh
+# ax-audio-route — Early HiBy FC3 (1.3 Vrms) OTG DAC detector with interactive Connect & Retry prompt
+
+ENV_DIR="/run/ax"
+ENV_FILE="${ENV_DIR}/audio.env"
+mkdir -p "$ENV_DIR"
+
+detect_hiby_fc3() {
+    grep -qiE "FC3|HiBy" /proc/asound/cards 2>/dev/null
+}
+
+write_fc3_profile() {
+    # Power down internal RK817 Class-D speaker amp to eliminate PMIC switching noise
+    if command -v amixer >/dev/null 2>&1; then
+        amixer -c rockchiprk817 -q set 'Playback' 0 2>/dev/null || true
+        amixer -c rockchiprk817 -q set 'Playback Path' 'OFF' 2>/dev/null || true
+    fi
+    cat > "$ENV_FILE" << 'EOF'
+ALSA_DEV=hw:CARD=FC3,DEV=0
+MIXER_CARD=FC3
+CHIP_PROFILE=fc3_1v3
+DEFAULT_VOL=0.65
+DAC_STATE=CONNECTED
+EOF
+    echo "[ax-audio-route] Early HiBy FC3 (1.3 Vrms) locked on hw:CARD=FC3,DEV=0 (fc3_1v3)"
+}
+
+write_rk817_fallback() {
+    if command -v amixer >/dev/null 2>&1; then
+        amixer -c rockchiprk817 -q set 'Playback' 0 2>/dev/null || true
+        amixer -c rockchiprk817 -q set 'Playback Path' 'SPK' 2>/dev/null || true
+        sleep 0.2
+        amixer -c rockchiprk817 -q set 'Playback' 85% 2>/dev/null || true
+    fi
+    cat > "$ENV_FILE" << 'EOF'
+ALSA_DEV=hw:CARD=rockchiprk817,DEV=0
+MIXER_CARD=rockchiprk817
+CHIP_PROFILE=rk817
+DEFAULT_VOL=0.85
+DAC_STATE=FALLBACK_RK817
+EOF
+    echo "[ax-audio-route] HiBy FC3 not attached — using internal RK817 (3.5 mm / Mono Speaker)"
+}
+
+case "${1:-apply}" in
+    apply)
+        if detect_hiby_fc3; then
+            write_fc3_profile
+        else
+            write_rk817_fallback
+        fi
+        ;;
+    prompt)
+        # Interactive Connect & Retry loop for TUI / pre-launch when HiBy FC3 is unplugged
+        while ! detect_hiby_fc3; do
+            printf '\n\033[1;33m[Piccolo-2go] Early HiBy FC3 (1.3 Vrms) USB-C OTG DAC not detected.\033[0m\n'
+            printf '  Plug your HiBy FC3 into the USB-C OTG port now, then:\n'
+            printf '    [R] Retry DAC detection\n'
+            printf '    [S] Skip and use internal RK817 (3.5 mm jack / mono speaker)\n'
+            printf '  Choice [R/s]: '
+            read -r choice </dev/tty 2>/dev/null || choice="s"
+            case "$choice" in
+                s|S)
+                    write_rk817_fallback
+                    exit 0
+                    ;;
+                *)
+                    echo "[ax-audio-route] Probing USB-C OTG bus..."
+                    sleep 1
+                    ;;
+            esac
+        done
+        write_fc3_profile
+        ;;
+    *)
+        echo "Usage: $0 {apply|prompt}"
+        exit 1
+        ;;
+esac
+exit 0
