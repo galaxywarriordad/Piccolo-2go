@@ -282,6 +282,4 @@ case "$1" in
         ;;
 esac
 exit 0
-```[cite: 19, 20, 21]
 
-Where would you like to go next—`ax-audio-route` and `99-ax-2go-otg.rules`, or `ax-sdk`'s `CMakeLists.txt` and core headers[cite: 8, 9, 10, 18]?
