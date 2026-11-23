@@ -1,6 +1,6 @@
 #!/bin/sh
 # S01piccolo-2go-isolate — Deterministic 1:2:1 RK3326 Isolation, Safe PLL Steps (1.30/1.34/1.39 GHz),
-#                          1024 MB LZ4 ZRAM & Mali-G31 Panfrost tmpfs Shader Cache
+#                          1024 MB LZ4 ZRAM, Mali-G31 Panfrost Cache & Hold-Button Safe Recovery
 
 apply_cpu_max_khz() {
     target_khz="$1"
@@ -13,6 +13,23 @@ apply_cpu_max_khz() {
 case "$1" in
     start)
         echo "[Piccolo-2go] Applying 1:2:1 Cortex-A35 topology, 1024 MB LZ4 ZRAM & Mali-G31 cache..."
+
+        # 0. Hold-Button Safe Recovery Check (SELECT / FN / B held during boot)
+        SAFE_RECOVERY=0
+        if command -v ax-boot-recovery >/dev/null 2>&1 && ax-boot-recovery; then
+            SAFE_RECOVERY=1
+            touch /run/ax-safe-recovery
+            if [ -w /dev/tty1 ]; then
+                printf '\n\033[1;33m[Piccolo-2go] SAFE RECOVERY TRIGGERED (Button Held) — Locking 1.30 GHz CPU, 666 MHz DDR3 & Default DTB!\033[0m\n' > /dev/tty1 2>/dev/null || true
+            fi
+            if [ -f /boot/dtbs/rk3326-g350-linux.dtb ]; then
+                cp -f /boot/dtbs/rk3326-g350-linux.dtb /boot/rk3326-g350-linux.dtb 2>/dev/null || true
+            fi
+            if [ -w /boot/boot.ini ]; then
+                sed -i 's/max_ddrfreq=[0-9]*/max_ddrfreq=666/g' /boot/boot.ini 2>/dev/null || true
+            fi
+            sync
+        fi
 
         # 1. Bound tmpfs mounts & initialize zero-SD-write Panfrost shader cache in RAM
         mount -o remount,size=32M /tmp 2>/dev/null || true
@@ -54,7 +71,7 @@ case "$1" in
         #    1296000 (1.30 GHz Stock Safe) | 1344000 (1.34 GHz Sweet-Spot +48 MHz) | 1392000 (1.39 GHz High +96 MHz)
         MAX_KHZ=1296000
         PROFILE_LABEL="1.296 GHz / 1.30 GHz (Official Stock Safe)"
-        if [ -f /boot/ax-cpu.conf ]; then
+        if [ "$SAFE_RECOVERY" -eq 0 ] && [ -f /boot/ax-cpu.conf ]; then
             if grep -qE "^(CPU_PROFILE=1\\.39|CPU_MAX_KHZ=1392000)$" /boot/ax-cpu.conf 2>/dev/null; then
                 MAX_KHZ=1392000
                 PROFILE_LABEL="1.392 GHz / 1.39 GHz (High PLL Step +96 MHz)"
