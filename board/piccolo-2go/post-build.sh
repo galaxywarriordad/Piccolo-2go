@@ -10,12 +10,19 @@ if [ -f "${BOARD_DIR}/logo.bmp" ]; then
     install -D -m 0644 "${BOARD_DIR}/logo.bmp" "${BINARIES_DIR}/logo.bmp"
 fi
 
-# Stage default BATLEXP G350 / R36S DTB and populate /boot/dtbs/ for dtb-select
+# Stage bundled verified DTBs (G350, R36H, R46H, R36S Plus & top 4 R36S panel revisions)
 mkdir -p "${TARGET_DIR}/boot/dtbs"
-if [ -f "${BINARIES_DIR}/rk3326-odroid-go3.dtb" ]; then
-    cp -f "${BINARIES_DIR}/rk3326-odroid-go3.dtb" "${BINARIES_DIR}/rk3326-g350-linux.dtb"
-elif [ -f "${BINARIES_DIR}/rk3326-odroid-go2.dtb" ]; then
-    cp -f "${BINARIES_DIR}/rk3326-odroid-go2.dtb" "${BINARIES_DIR}/rk3326-g350-linux.dtb"
+if [ -d "${BOARD_DIR}/dtbs" ]; then
+    cp -f "${BOARD_DIR}/dtbs"/*.dtb "${BINARIES_DIR}/" 2>/dev/null || true
+    cp -f "${BOARD_DIR}/dtbs"/*.dtb "${TARGET_DIR}/boot/dtbs/" 2>/dev/null || true
+fi
+
+if [ ! -f "${BINARIES_DIR}/rk3326-g350-linux.dtb" ]; then
+    if [ -f "${BINARIES_DIR}/rk3326-odroid-go3.dtb" ]; then
+        cp -f "${BINARIES_DIR}/rk3326-odroid-go3.dtb" "${BINARIES_DIR}/rk3326-g350-linux.dtb"
+    elif [ -f "${BINARIES_DIR}/rk3326-odroid-go2.dtb" ]; then
+        cp -f "${BINARIES_DIR}/rk3326-odroid-go2.dtb" "${BINARIES_DIR}/rk3326-g350-linux.dtb"
+    fi
 fi
 cp -f "${BINARIES_DIR}"/*.dtb "${TARGET_DIR}/boot/dtbs/" 2>/dev/null || true
 
