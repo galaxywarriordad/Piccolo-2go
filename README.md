@@ -75,19 +75,19 @@ The Rockchip **RK3326** pairs four dual-issue **in-order ARM Cortex-A35** cores 
 - **Primary USB-C OTG DAC — Early HiBy FC3 (`ESS ES9281AC Pro`, `1.3 Vrms / 70 mW @ 32 Ω`, VID `0x32BB`):**
   - Hot-plugged via `99-ax-2go-otg.rules` and `/usr/sbin/ax-audio-route`, locking `power/control="on"` (zero USB autosuspend clicks) and bypassing PulseAudio/PipeWire/software resampling (`snd_pcm_hw_params_set_rate_resample(0)`).
   - Streams bit-perfect `32-bit` integer **`S32_LE` (`44.1–384 kHz`)** and hardware **`DoP` (`DSD64` `176.4 kHz` / `DSD128` `352.8 kHz`)** with `fc3_1v3` hardware attenuator presets (`--volume 0.95` portable speakers, `0.65` wired headphones, `0.35` sensitive `16–32 Ω` IEMs).
-- **Interactive Connect & Retry (`ax-audio-route prompt`):** If the HiBy FC3 is unplugged when launching audio, `Piccolo-2go` prompts you to plug in the USB-C OTG DAC and retry (`[R]`) or fall back cleanly (`[S]`) to the internal **RK817** codec (`3.5 mm` jack + mono speaker) with pop-free path switching.
+  - **Interactive Connect & Retry (`ax-audio-route prompt`):** If the HiBy FC3 is unplugged when launching audio, `Piccolo-2go` prompts you to plug in the USB-C OTG DAC and retry (`[R]`) or fall back cleanly (`[S]`) to the internal **RK817** codec (`3.5 mm` jack + mono speaker) with pop-free path switching.
 
 ### 5. Dual SanDisk Extreme PRO Storage (`64 GB TF1` + `128 GB TF2`) & `1024 MB LZ4` ZRAM
 
 - **TF1 — OS & Save Slot (`64 GB` SanDisk Extreme PRO `A2` / `V30`):**
-  - `p1` (`FAT32`, `256 MB`): `LZ4`-compressed pruned `linux-rk3326.fragment` kernel `Image` (`< 180 ms` boot decompression, `~110 MB` LPDDR3 reclaimed), `boot.ini`, and `/boot/dtbs/`.
+  - `p1` (`FAT32`, `256 MB`): `LZ4`-compressed pruned `linux-rk3326.fragment` kernel `Image` (`< 180 ms` boot decompression, `~110 MB` LPDDR3 reclaimed), `boot.ini`, `640×480` Espresso/Copper U-Boot splash `logo.bmp`, and `/boot/dtbs/`.
   - `p2` (`SquashFS zstd`, `128 KB` blocks, `< 140 MB`): Immutable, read-only root filesystem immune to sudden power loss.
   - `p3` (`ext4`, `~59 GB`): Auto-expanded on first boot (`S02piccolo-2go-storage`, `noatime,nodiratime,commit=60,data=writeback`) for saves and configs.
 - **TF2 — Portable Media Slot (`128 GB` SanDisk Extreme PRO `A2` / `V30`):**
-  - `p1` (`exFAT` / `ext4`, `~119 GB`): Dedicated media card automatically bound to `/userdata/{roms,music,bios}` on boot for FBNeo arcade/Neo Geo ROMs, lossless `.flac` / `DoP` albums, and `.mod`/`.xm`/`.s3m`/`.it` tracker libraries.
-- **Automatic SDR50 Bus Verification & `1024 MB LZ4` ZRAM:**
-  - `S02piccolo-2go-storage` probes `mmc0` (`TF1`) and `mmc1` (`TF2`) at boot to verify `SDR50` (`50 MHz`, `3.3V` signaling, `~24 MB/s`)—automatically stripping unstable `SDR104` on fixed-`3.3V` `VQMMC` boards or flashing a console warning and locking safe `25 MHz` High-Speed mode if CRC tuning fails.
-  - Configures `1024 MB` `lz4` ZRAM (`~650 MB/s` in-order Cortex-A35 decompression, `vm.swappiness=120`, `vm.page-cluster=0`, `vm.watermark_scale_factor=125`) alongside bounded `/tmp` (`32 MB`) and `/run` (`16 MB`) tmpfs.
+  - `p1` (`exFAT` / `ext4`, `~119 GB`): Dedicated media card automatically bound to `/userdata/{roms,music,bios}` on boot for `FBNeo` arcade/Neo Geo ROMs, lossless `.flac` / `DoP` albums, and `.mod`/`.xm`/`.s3m`/`.it` tracker libraries.
+- **Automatic `SDR50` Bus Verification & `1024 MB LZ4` ZRAM:**
+  - `S02piccolo-2go-storage` probes `mmc0` (`TF1`) and `mmc1` (`TF2`) at boot to verify **`SDR50` (`50 MHz`, `3.3V` signaling, `~24 MB/s`)**—automatically stripping unstable `SDR104` on fixed-`3.3V` VQMMC boards or flashing a console warning and locking safe `25 MHz` High-Speed mode if CRC tuning fails.
+  - Configures **`1024 MB` `lz4` ZRAM** (`~650 MB/s` in-order Cortex-A35 decompression, `vm.swappiness=120`, `vm.page-cluster=0`, `vm.watermark_scale_factor=125`) alongside bounded `/tmp` (`32 MB`) and `/run` (`16 MB`) `tmpfs`.
 
 ---
 
@@ -98,17 +98,20 @@ Piccolo-2go/
 ├── .github/workflows/
 │   └── ci.yml                                       # Automated ShellCheck & aarch64 C tool validation
 ├── board/piccolo-2go/
-│   ├── boot.ini                                     # U-Boot bootargs (1296 MHz CPU, 520 MHz GPU, 720 MHz DDR3)
+│   ├── boot.ini                                     # U-Boot bootargs, logo.bmp display & 1296/520/720 MHz clocks
 │   ├── genimage.cfg                                 # Dual-partition MBR sdcard.img layout (BOOT + ROOTFS)
 │   ├── linux-rk3326.fragment                        # Pruned RK3326 kernel config (LZ4, NO_HZ_FULL, 64 MB CMA)
-│   ├── post-build.sh                                # Permissions, boot.ini staging & lvp Vulkan ICD purge
+│   ├── logo.bmp                                     # 640x480 24-bit Espresso/Copper U-Boot boot splash
+│   ├── post-build.sh                                # Permissions, boot.ini/logo.bmp staging & lvp ICD purge
 │   ├── post-image.sh                                # Final sdcard.img assembly via genimage
 │   └── rootfs-overlay/
-│       ├── etc/init.d/
-│       │   ├── S01piccolo-2go-isolate               # 1:2:1 core/IRQ pinning, 1024 MB LZ4 ZRAM & 1.30-1.39 GHz PLL
-│       │   └── S02piccolo-2go-storage               # Dual SanDisk (64 GB + 128 GB) mounter & SDR50 bus guard
-│       ├── etc/udev/rules.d/
-│       │   └── 99-ax-2go-otg.rules                  # Early HiBy FC3 1.3 Vrms & MIDI zero-autosuspend rules
+│       ├── etc/
+│       │   ├── init.d/
+│       │   │   ├── S01piccolo-2go-isolate           # 1:2:1 core/IRQ pinning, 1024 MB LZ4 ZRAM & 1.30-1.39 GHz PLL
+│       │   │   └── S02piccolo-2go-storage           # Dual SanDisk (64 GB + 128 GB) mounter & SDR50 bus guard
+│       │   ├── udev/rules.d/
+│       │   │   └── 99-ax-2go-otg.rules              # Early HiBy FC3 1.3 Vrms & MIDI zero-autosuspend rules
+│       │   └── retroarch-2go.cfg                    # 640x480 integer-scaled KMS/Panfrost FBNeo configuration
 │       └── usr/sbin/
 │           └── ax-audio-route                       # HiBy FC3 detector with interactive Connect & Retry prompt
 ├── configs/
@@ -130,8 +133,6 @@ Piccolo-2go/
 └── README.md                                        # Project overview & fixed-hardware topology
 ```
 
----
-
 ## 🌐 Silicon Preservation Society Ecosystem
 
 - **ax-sdk** — Shared dependency-free C++20 deterministic hardware runtime (`v1_36_2`).
@@ -144,7 +145,7 @@ Piccolo-2go/
 - **Cemu-Latte-AX** — Deterministic Wii U execution engine (`2:3:1` topology).
 
 ---
-
 ## 📄 License
 
-Released under the GNU General Public License v3.0.
+Released under the [GNU General Public License v3.0](LICENSE).
+
