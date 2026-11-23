@@ -30,6 +30,12 @@ static const struct DtbAlias kAliases[] = {
     {"r36s-xx",          "rk3326-r36xx-linux.dtb"},
 };
 
+static int is_safe_filename(const char* name) {
+    if (!name || name[0] == '\0') return 0;
+    if (strchr(name, '/') != NULL || strstr(name, "..") != NULL) return 0;
+    return 1;
+}
+
 static int copy_file_sync(const char* src, const char* dst) {
     int in_fd = open(src, O_RDONLY | O_CLOEXEC);
     if (in_fd < 0) return -1;
@@ -98,8 +104,22 @@ int main(int argc, char** argv) {
         }
     }
 
+    if (!is_safe_filename(target_name)) {
+        fprintf(stderr, "[dtb-select] Invalid DTB name '%s'\n", target_name);
+        return 1;
+    }
+
     char src_path[512];
-    snprintf(src_path, sizeof(src_path), "%s/%s", dtb_dir, target_name);
+    int written = snprintf(src_path, sizeof(src_path), "%s/%s", dtb_dir, target_name);
+    if (written < 0 || (size_t)written >= sizeof(src_path)) {
+        fprintf(stderr, "[dtb-select] Path too long for '%s'\n", target_name);
+        return 1;
+    }
+
+    if (access(src_path, R_OK) != 0) {
+        fprintf(stderr, "[dtb-select] Source DTB not readable '%s': %s\n", src_path, strerror(errno));
+        return 1;
+    }
 
     if (copy_file_sync(src_path, active_dtb) != 0) {
         fprintf(stderr, "[dtb-select] Failed to activate '%s': %s\n", src_path, strerror(errno));
