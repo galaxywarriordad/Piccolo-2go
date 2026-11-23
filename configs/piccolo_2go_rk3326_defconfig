@@ -1,7 +1,8 @@
-# --- Target Architecture: Rockchip RK3326 (4x ARM Cortex-A35, 1 GB LPDDR3) ---
+# --- Target Architecture: Rockchip RK3326 (4x In-Order ARM Cortex-A35, 1 GB LPDDR3) ---
 BR2_aarch64=y
 BR2_cortex_a35=y
 BR2_ARM_FPU_NEON_FP_ARMV8=y
+BR2_TARGET_OPTIMIZATION="-O3 -mcpu=cortex-a35 -mtune=cortex-a35 -fomit-frame-pointer"
 BR2_SHARED_LIBS=y
 BR2_STRIP_strip=y
 # BR2_ENABLE_DEBUG is not set
