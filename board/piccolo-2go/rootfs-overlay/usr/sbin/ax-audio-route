@@ -1,26 +1,47 @@
 #!/bin/sh
 # ax-audio-route — Primary HiBy FC3 (1.3 Vrms) & Backup USB DAC (JM6 Pro / HiBy D1) OTG router
 
+set -eu
+
 ENV_DIR="/run/ax"
 ENV_FILE="${ENV_DIR}/audio.env"
+CONF_FILE="/boot/ax-2go.conf"
+
+PRIMARY_VOL="0.65"
+BACKUP_VOL="0.45"
+FALLBACK_VOL="0.85"
+ALLOW_SPEAKER_WITH_DAC="0"
+
+if [ -r "$CONF_FILE" ]; then
+    # shellcheck disable=SC1090
+    . "$CONF_FILE" || true
+fi
+
 mkdir -p "$ENV_DIR"
 
+has_asound_cards() {
+    [ -r /proc/asound/cards ] && [ -s /proc/asound/cards ]
+}
+
 detect_hiby_fc3() {
+    has_asound_cards || return 1
     grep -qiE "FC3|HiBy" /proc/asound/cards 2>/dev/null
 }
 
+# Prints "<card_index>|<card_name>" for the first non-RK817 card in /proc/asound/cards
 detect_backup_usb_card() {
-    # Match any non-RK817 sound card entry in /proc/asound/cards (e.g., JM6 Pro / HiBy D1 / USB DAC)
+    has_asound_cards || return 1
     awk '
         /^[[:space:]]*[0-9]+[[:space:]]+\[/ {
+            idx = $1
             line = $0
-            if (line ~ /rockchiprk817|RK817/) next
+            if (line ~ /rockchiprk817|rk817|RK817/) next
             match(line, /\[[^]]+\]/)
             if (RSTART > 0) {
                 card = substr(line, RSTART + 1, RLENGTH - 2)
                 gsub(/^[[:space:]]+|[[:space:]]+$/, "", card)
                 if (length(card) > 0) {
-                    print card
+                    printf "%s|%s\n", idx, card
                     exit 0
                 }
             }
@@ -29,53 +50,53 @@ detect_backup_usb_card() {
 }
 
 mute_rk817_speaker() {
-    if command -v amixer >/dev/null 2>&1; then
-        amixer -c rockchiprk817 -q set 'Playback' 0 2>/dev/null || true
-        amixer -c rockchiprk817 -q set 'Playback Path' 'OFF' 2>/dev/null || true
-        amixer -c rockchiprk817 -q set 'Playback' 0 2>/dev/null || true
-    fi
+    [ "${ALLOW_SPEAKER_WITH_DAC}" = "1" ] && return 0
+    command -v amixer >/dev/null 2>&1 || return 0
+    has_asound_cards || return 0
+    grep -qiE "rockchiprk817|rk817" /proc/asound/cards 2>/dev/null || return 0
+
+    amixer -c rockchiprk817 -q set 'Playback' 0 2>/dev/null || true
+    amixer -c rockchiprk817 -q set 'Playback Path' 'OFF' 2>/dev/null || true
+}
+
+write_env_atomic() {
+    tmp_file="${ENV_FILE}.tmp.$$"
+    cat >"$tmp_file" <<EOF
+ALSA_DEV=$1
+MIXER_CARD=$2
+CHIP_PROFILE=$3
+DEFAULT_VOL=$4
+DAC_STATE=$5
+EOF
+    mv -f "$tmp_file" "$ENV_FILE"
 }
 
 write_fc3_profile() {
     mute_rk817_speaker
-    cat > "$ENV_FILE" << 'EOF'
-ALSA_DEV=hw:CARD=FC3,DEV=0
-MIXER_CARD=FC3
-CHIP_PROFILE=fc3_1v3
-DEFAULT_VOL=0.65
-DAC_STATE=CONNECTED
-EOF
-    echo "[ax-audio-route] Primary HiBy FC3 (1.3 Vrms) locked on hw:CARD=FC3,DEV=0 (fc3_1v3)"
+    write_env_atomic "hw:CARD=FC3,DEV=0" "FC3" "fc3_1v3" "${PRIMARY_VOL}" "CONNECTED"
+    echo "[ax-audio-route] Primary HiBy FC3 (1.3 Vrms) locked on hw:CARD=FC3,DEV=0 (fc3_1v3, vol=${PRIMARY_VOL})"
 }
 
 write_backup_usb_profile() {
     card_name="$1"
     mute_rk817_speaker
-    cat > "$ENV_FILE" << EOF
-ALSA_DEV=hw:CARD=${card_name},DEV=0
-MIXER_CARD=${card_name}
-CHIP_PROFILE=usb_backup
-DEFAULT_VOL=0.45
-DAC_STATE=CONNECTED
-EOF
-    echo "[ax-audio-route] Backup USB DAC locked on hw:CARD=${card_name},DEV=0 (usb_backup, default vol=0.45)"
+    write_env_atomic "hw:CARD=${card_name},DEV=0" "${card_name}" "usb_backup" "${BACKUP_VOL}" "CONNECTED"
+    echo "[ax-audio-route] Backup USB DAC locked on hw:CARD=${card_name},DEV=0 (usb_backup, vol=${BACKUP_VOL})"
 }
 
 write_rk817_fallback() {
-    if command -v amixer >/dev/null 2>&1; then
+    if command -v amixer >/dev/null 2>&1 && has_asound_cards && grep -qiE "rockchiprk817|rk817" /proc/asound/cards 2>/dev/null; then
         amixer -c rockchiprk817 -q set 'Playback' 0 2>/dev/null || true
         amixer -c rockchiprk817 -q set 'Playback Path' 'SPK' 2>/dev/null || true
         sleep 0.2
         amixer -c rockchiprk817 -q set 'Playback' 85% 2>/dev/null || true
     fi
-    cat > "$ENV_FILE" << 'EOF'
-ALSA_DEV=hw:CARD=rockchiprk817,DEV=0
-MIXER_CARD=rockchiprk817
-CHIP_PROFILE=rk817
-DEFAULT_VOL=0.85
-DAC_STATE=FALLBACK_RK817
-EOF
+    write_env_atomic "hw:CARD=rockchiprk817,DEV=0" "rockchiprk817" "rk817" "${FALLBACK_VOL}" "FALLBACK_RK817"
     echo "[ax-audio-route] No USB DAC attached — using internal RK817 (3.5 mm / Mono Speaker)"
+}
+
+is_dac_connected() {
+    [ -f "$ENV_FILE" ] && grep -q "^DAC_STATE=CONNECTED$" "$ENV_FILE" 2>/dev/null
 }
 
 apply_audio_routing() {
@@ -84,8 +105,9 @@ apply_audio_routing() {
         return 0
     fi
 
-    backup_card=$(detect_backup_usb_card)
-    if [ -n "$backup_card" ]; then
+    backup_entry=$(detect_backup_usb_card || true)
+    if [ -n "$backup_entry" ]; then
+        backup_card="${backup_entry#*|}"
         write_backup_usb_profile "$backup_card"
         return 0
     fi
@@ -93,33 +115,52 @@ apply_audio_routing() {
     write_rk817_fallback
 }
 
+prompt_audio_routing() {
+    apply_audio_routing
+    if is_dac_connected; then
+        return 0
+    fi
+
+    if [ ! -r /dev/tty ]; then
+        write_rk817_fallback
+        return 0
+    fi
+
+    while ! is_dac_connected; do
+        printf '\n\033[1;33m[Piccolo-2go] USB-C DAC (HiBy FC3 primary, or JM6 Pro / HiBy Digital D1 backup) not detected.\033[0m\n'
+        printf '  Plug your USB-C DAC into the USB-C OTG port now, then:\n'
+        printf '    [R] Retry DAC detection\n'
+        printf '    [S] Skip and use internal RK817 (3.5 mm jack / mono speaker)\n'
+        printf '  Choice [R/s]: '
+        if ! read -r choice </dev/tty 2>/dev/null; then
+            write_rk817_fallback
+            return 0
+        fi
+        case "$choice" in
+            s|S)
+                write_rk817_fallback
+                return 0
+                ;;
+            r|R|"")
+                echo "[ax-audio-route] Probing USB-C OTG bus..."
+                sleep 1
+                apply_audio_routing
+                ;;
+            *)
+                echo "[ax-audio-route] Probing USB-C OTG bus..."
+                sleep 1
+                apply_audio_routing
+                ;;
+        esac
+    done
+}
+
 case "${1:-apply}" in
     apply)
         apply_audio_routing
         ;;
     prompt)
-        while [ ! -f "$ENV_FILE" ] || ! grep -q "DAC_STATE=CONNECTED" "$ENV_FILE" 2>/dev/null; do
-            apply_audio_routing
-            if grep -q "DAC_STATE=CONNECTED" "$ENV_FILE" 2>/dev/null; then
-                break
-            fi
-            printf '\n\033[1;33m[Piccolo-2go] USB-C DAC (HiBy FC3 primary, or JM6 Pro / HiBy Digital D1 backup) not detected.\033[0m\n'
-            printf '  Plug your USB-C DAC into the USB-C OTG port now, then:\n'
-            printf '    [R] Retry DAC detection\n'
-            printf '    [S] Skip and use internal RK817 (3.5 mm jack / mono speaker)\n'
-            printf '  Choice [R/s]: '
-            read -r choice </dev/tty 2>/dev/null || choice="s"
-            case "$choice" in
-                s|S)
-                    write_rk817_fallback
-                    exit 0
-                    ;;
-                *)
-                    echo "[ax-audio-route] Probing USB-C OTG bus..."
-                    sleep 1
-                    ;;
-            esac
-        done
+        prompt_audio_routing
         ;;
     *)
         echo "Usage: $0 {apply|prompt}"
