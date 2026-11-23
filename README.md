@@ -156,8 +156,9 @@ Piccolo-2go/
 ## 🎮 Supported Hardware
 
 `Piccolo-2go` is developed, tuned, and primarily validated on the **BATLEXP G350** (`rk3326-g350-linux.dtb`, active by default).
-
+      
 To support the broader Rockchip RK3326 handheld family, the following **community-sourced Device Trees (`.dtb`)** are bundled in `/boot/dtbs/` and selectable via `dtb-select <alias>` (or by copying the matching file to `/boot/rk3326-g350-linux.dtb`). **These additional DTBs are currently untested on `Piccolo-2go`—please open an Issue in this repository if you encounter panel, audio, or control mapping quirks on your revision:**
+> **Hold-Button Safe Recovery:** If you switch to an incompatible `.dtb` and get a black screen, hold **`SELECT`**, **`FN`**, or **`B`** while powering on—`ax-boot-recovery` will automatically restore `rk3326-g350-linux.dtb`, `1.30 GHz` safe CPU clocks, and `666 MHz` DDR3 backup timings.
 
 | `dtb-select` Alias | Bundled `.dtb` Filename | Target Model & How to Identify Your Revision | Status |
 | :--- | :--- | :--- | :--- |
@@ -169,8 +170,8 @@ To support the broader Rockchip RK3326 handheld family, the following **communit
 | **`r36s-plus`** | `rk3326-r36splus-linux.dtb` | **R36S Plus (`1:1` Square Screen)** — Widescreen/square `720×720` `1:1` IPS R36S variant | Untested *(Community DTB)* |
 | **`r36h`** | `rk3326-r36h-linux.dtb` | **GameConsole R36H** — Horizontal candybar-form-factor RK3326 handheld (`3.5"` `640×480` IPS, twin thumbsticks below D-pad/buttons) | Untested *(Community DTB)* |
 | **`r46h`** | `rk3326-r46h-linux.dtb` | **GameConsole R46H** — Larger horizontal RK3326 handheld (`4.0"` `720×720` / `640×480` IPS class) | Untested *(Community DTB)* |
-
-> **Hold-Button Safe Recovery:** If you switch to an incompatible `.dtb` and get a black screen, hold **`SELECT`**, **`FN`**, or **`B`** while powering on—`ax-boot-recovery` will automatically restore `rk3326-g350-linux.dtb`, `1.30 GHz` safe CPU clocks, and `666 MHz` DDR3 backup timings.
+    
+> **Analog Thumbstick MUX Note (`G350` vs. `R36S`/`R36H`):** The BATLEXP G350 and R36S/R36H wire their 4-channel `SARADC` analog multiplexers (`amux-channel-mapping`) and `invert-absx`/`invert-absrx` axis polarities differently. Booting with the matching `.dtb` for your board automatically applies the correct hardware axis mapping in `odroidgo3-joypad`.
 
 ## 📄 License
 
