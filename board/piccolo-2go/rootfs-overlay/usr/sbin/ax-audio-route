@@ -14,6 +14,7 @@ write_fc3_profile() {
     if command -v amixer >/dev/null 2>&1; then
         amixer -c rockchiprk817 -q set 'Playback' 0 2>/dev/null || true
         amixer -c rockchiprk817 -q set 'Playback Path' 'OFF' 2>/dev/null || true
+        amixer -c rockchiprk817 -q set 'Playback' 0 2>/dev/null || true
     fi
     cat > "$ENV_FILE" << 'EOF'
 ALSA_DEV=hw:CARD=FC3,DEV=0
