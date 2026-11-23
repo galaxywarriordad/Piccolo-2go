@@ -1,24 +1,19 @@
-# 99-ax-2go-otg.rules — Primary HiBy FC3 (1.3 Vrms), Backup USB DACs (JM6 Pro / HiBy D1) & MIDI Rules
+# 99-ax-2go-otg.rules — Piccolo-2go v1.1 USB-C OTG Audio, MIDI & Autosuspend Rules (RK3326)
+# Primary DAC: HiBy FC3 (ES9281AC Pro / ES9281PRO, VID 0x32bb / 0x2fc6)
+# Backup USB-C DACs: JCALLY JM6 Pro (CX31993 + MAX97220) & HiBy Digital D1 (CS46L41)
 
-# HiBy FC3 / ESS ES9281AC Pro (VID 0x32bb / 0x2fc6) — lock USB power/control="on" (zero autosuspend clicks)
-ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="32bb", TEST=="power/control", ATTR{power/control}="on"
-ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="2fc6", TEST=="power/control", ATTR{power/control}="on"
+# 1. Disable USB autosuspend on USB Audio Class (0x01) interfaces via parent device power/control
+ACTION=="add|change", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_interface", ATTR{bInterfaceClass}=="01", TEST=="../power/control", ATTR{../power/control}="on"
 
-# Backup USB-C DAC dongles (JCALLY JM6 Pro / HiBy Digital D1 / USB Audio class 0x01) — prevent autosuspend
-ACTION=="add", SUBSYSTEM=="usb", ENV{ID_USB_INTERFACES}=~":010[123]:", TEST=="power/control", ATTR{power/control}="on"
+# 2. Primary DAC: HiBy FC3 / ESS Sabre (VID 0x32bb / 0x2fc6) — lock power/control="on"
+ACTION=="add|change", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="32bb", TEST=="power/control", ATTR{power/control}="on"
+ACTION=="add|change", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="2fc6", TEST=="power/control", ATTR{power/control}="on"
 
-# Akai MPK Mini MK3 (VID 0x09e8) — disable USB autosuspend for RawMIDI
-ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="09e8", TEST=="power/control", ATTR{power/control}="on"
+# 3. USB MIDI controllers (e.g., Akai MPK Mini MK3 VID 0x09e8) — disable USB autosuspend
+ACTION=="add|change", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="09e8", TEST=="power/control", ATTR{power/control}="on"
 
-# Route audio dynamically when a USB sound card or USB audio interface is attached or removed
-ACTION=="add", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="32bb", RUN+="/usr/sbin/ax-audio-route apply"
-ACTION=="add", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="2fc6", RUN+="/usr/sbin/ax-audio-route apply"
-ACTION=="add", SUBSYSTEM=="sound", KERNEL=="card*", ENV{ID_USB_INTERFACES}=~":010[123]:", RUN+="/usr/sbin/ax-audio-route apply"
-
-ACTION=="remove", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="32bb", RUN+="/usr/sbin/ax-audio-route apply"
-ACTION=="remove", SUBSYSTEM=="sound", KERNEL=="card*", ATTRS{idVendor}=="2fc6", RUN+="/usr/sbin/ax-audio-route apply"
-ACTION=="remove", SUBSYSTEM=="sound", KERNEL=="card*", ENV{ID_USB_INTERFACES}=~":010[123]:", RUN+="/usr/sbin/ax-audio-route apply"
-
-ACTION=="remove", SUBSYSTEM=="usb", ATTR{idVendor}=="32bb", RUN+="/usr/sbin/ax-audio-route apply"
-ACTION=="remove", SUBSYSTEM=="usb", ATTR{idVendor}=="2fc6", RUN+="/usr/sbin/ax-audio-route apply"
-ACTION=="remove", SUBSYSTEM=="usb", ENV{ID_USB_INTERFACES}=~":010[123]:", RUN+="/usr/sbin/ax-audio-route apply"
+# 4. Update /run/ax/audio.env and RK817 speaker state on ALSA card add/remove or HiBy FC3 USB unplug
+ACTION=="add", SUBSYSTEM=="sound", KERNEL=="card[0-9]*", RUN+="/usr/sbin/ax-audio-route apply"
+ACTION=="remove", SUBSYSTEM=="sound", KERNEL=="card[0-9]*", RUN+="/usr/sbin/ax-audio-route apply"
+ACTION=="remove", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="32bb", RUN+="/usr/sbin/ax-audio-route apply"
+ACTION=="remove", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="2fc6", RUN+="/usr/sbin/ax-audio-route apply"
