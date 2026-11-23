@@ -11,12 +11,13 @@ FLAC_AX_DEPENDENCIES = ax-sdk alsa-lib flac libopenmpt
 
 define FLAC_AX_BUILD_CMDS
 	$(TARGET_CXX) $(TARGET_CXXFLAGS) -std=c++20 -O2 -Wall -Wextra \
-		-I$(STAGING_DIR)/usr/include/ax \
+		-I$(STAGING_DIR)/usr/include \
 		$(@D)/src/main.cpp -o $(@D)/flac_ax \
 		-lasound -lFLAC -lopenmpt -lpthread
 	$(TARGET_CXX) $(TARGET_CXXFLAGS) -std=c++20 -O2 -Wall -Wextra \
-		-I$(@D)/src/tui \
-		$(@D)/src/tui/appliance_tui_main.cpp -o $(@D)/ax_appliance_tui
+		-I$(STAGING_DIR)/usr/include -I$(@D)/src/tui \
+		$(@D)/src/tui/appliance_tui_main.cpp $(STAGING_DIR)/usr/src/ax/input.cpp \
+		-o $(@D)/ax_appliance_tui
 endef
 
 define FLAC_AX_INSTALL_TARGET_CMDS
