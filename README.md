@@ -222,6 +222,16 @@ To support the broader Rockchip RK3326 handheld family, the following **communit
 > **Analog Thumbstick MUX Note (G350 vs. R36S/R36H):** The BATLEXP G350 and R36S/R36H wire their 4-channel SARADC analog multiplexers (`amux-channel-mapping`) and `invert-absx` / `invert-absrx` axis polarities differently. Booting with the matching `.dtb` for your board automatically applies the correct hardware axis mapping in `odroidgo3-joypad`.
 
 ---
+## Ecosystem Architecture & Topology
+
+This repository is part of **The Silicon Preservation Society** (`[AX]`) ecosystem—a nine-repository bare-metal hardware preservation stack built around **Policy-in-SDK / Adapter-in-Consumer** separation:
+
+* **Shared Runtime Core:** [`ax-sdk`](https://github.com/galaxywarriordad/ax-sdk) — C++20 `2:3:1` / `1:2:1` core topology, `EngineConfig`, HugeTLB fastmem, and VRAM guardrails.  
+* **Bare-Metal OS & Workbench:** [`Piccolo-AX`](https://github.com/galaxywarriordad/Piccolo-AX) (`x86_64` `6.12-rt` appliance), [`Piccolo-2go`](https://github.com/galaxywarriordad/Piccolo-2go) (`ARM64` `RK3326` handheld OS), [`piccolo-ax-desktop`](https://github.com/galaxywarriordad/piccolo-ax-desktop) (isolated X11 workbench).  
+* **Media & Emulation Consumers:** [`FLAC_AX`](https://github.com/galaxywarriordad/FLAC_AX), [`Eden-Espresso-Wave-AX`](https://github.com/galaxywarriordad/Eden-Espresso-Wave-AX), [`Cemu-Latte-AX`](https://github.com/galaxywarriordad/Cemu-Latte-AX), [`Amiberry-AX`](https://github.com/galaxywarriordad/Amiberry-AX), and [`Generation-X-AX`](https://github.com/galaxywarriordad/Generation-X-AX).
+
+For full core-pinning tables (`2:3:1` and `1:2:1`), cross-repository data flow, and architectural specifications, see the master guide in [**`ax-sdk/docs/ECOSYSTEM_ARCHITECTURE.md`](https://github.com/galaxywarriordad/ax-sdk/blob/main/docs/ECOSYSTEM_ARCHITECTURE.md)**.
+---
 
 ## License
 
