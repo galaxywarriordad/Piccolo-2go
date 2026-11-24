@@ -45,7 +45,7 @@ jobs:
           else
             FIXTURE_ROOT="/tmp/arkos4clone-fixture"
             CONSOLE_DIR="${FIXTURE_ROOT}/boot/dArkOS/consoles/${CONSOLE_NAME}"
-            mkdir -p "${CONSOLE_DIR}/5.10" "${FIXTURE_ROOT}/boot/dArkOS/consoles/logo/480P"
+            mkdir -p "${CONSOLE_DIR}/6.12" "${FIXTURE_ROOT}/boot/dArkOS/consoles/logo/480P"
             cat <<'EOF' > /tmp/sample-g350.dts
           /dts-v1/;
           / {
@@ -53,7 +53,7 @@ jobs:
               model = "Batlexp G350";
           };
           EOF
-            dtc -I dts -O dtb -o "${CONSOLE_DIR}/5.10/rk3326-g350-linux.dtb" /tmp/sample-g350.dts
+            dtc -I dts -O dtb -o "${CONSOLE_DIR}/6.12/rk3326-g350-linux.dtb" /tmp/sample-g350.dts
             printf 'setenv bootargs "loglevel=4"\n' > "${CONSOLE_DIR}/boot.ini"
             printf 'SPLASH_PLACEHOLDER\n' > "${FIXTURE_ROOT}/boot/dArkOS/consoles/logo/480P/logo.bmp"
             echo "dtb_src_dir=${FIXTURE_ROOT}" >> "$GITHUB_OUTPUT"
@@ -68,7 +68,7 @@ jobs:
           cmake -S . -B build-cmake \
             -DARKOS4CLONE_DIR="${DTB_SRC_DIR}" \
             -DPICCOLO_CONSOLE="${CONSOLE_NAME}" \
-            -DPICCOLO_KERNEL="5.10" \
+            -DPICCOLO_KERNEL="6.12" \
             -DPICCOLO_PROFILE="${PROFILE_NAME}"
           cmake --build build-cmake --verbose
 
@@ -94,3 +94,7 @@ jobs:
             build-cmake/*.check.dts
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Clean Build Directory
+        if: always()
+        run: rm -rf build-cmake
