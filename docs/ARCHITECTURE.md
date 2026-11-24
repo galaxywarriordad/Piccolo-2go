@@ -5,7 +5,7 @@
 * **Internal Fallback:** RK817 audio codec  
 * **Video Playback:** 640x480 mpv / /userdata/movies support
 
-# Piccolo-2go — System Architecture & Fixed-Hardware Topology (v1.1)
+## Piccolo-2go — System Architecture & Fixed-Hardware Topology (v1.1)
 
 * **Platform:** BATLEXP G350 & R36S Handheld Consoles  
 * **SoC & PMIC:** Rockchip RK3326 (*4x ARM Cortex-A35*, *ARM Mali-G31 MP2*, *1 GB LPDDR3*) \+ Rockchip *RK817*  
