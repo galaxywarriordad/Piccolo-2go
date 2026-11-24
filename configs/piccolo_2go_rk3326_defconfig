@@ -56,11 +56,12 @@ BR2_PACKAGE_SDL2_OPENGLES=y
 # BR2_PACKAGE_SDL2_WAYLAND is not set
 BR2_PACKAGE_SDL3=y
 
-# --- Deterministic AX Core, Bit-Perfect Audio & Single Bring-Up Emulator (FBNeo) ---
+# --- Deterministic AX Core, Bit-Perfect Audio, 640x480 Video & Single Bring-Up Emulator (FBNeo) ---
 BR2_PACKAGE_AX_SDK=y
 BR2_PACKAGE_LIBOPENMPT=y
 BR2_PACKAGE_FLAC_AX=y
 BR2_PACKAGE_FLAC_AX_APPLIANCE_TUI=y
+BR2_PACKAGE_MPV=y
 BR2_PACKAGE_RETROARCH=y
 BR2_PACKAGE_LIBRETRO_FBNEO=y
 BR2_PACKAGE_PICCOLO_2GO_BASE=y
@@ -86,6 +87,21 @@ BR2_PACKAGE_HOST_MTOOLS=y
 # BR2_PACKAGE_PULSEAUDIO is not set
 # BR2_PACKAGE_QT6 is not set
 # BR2_PACKAGE_LSFG_VK is not set
-```[cite: 14]
+```[cite: 16]
 
-Ready for the next group of files whenever you want to continue.
+---
+
+### Complete New File: `board/piccolo-2go/rootfs-overlay/etc/mpv/mpv.conf`
+
+```ini
+# Piccolo-2go v1.1 mpv Configuration (RK3326 640x480 Native Panel + Direct KMS/DRM & ALSA)
+fullscreen=yes
+profile=fast
+vo=gpu
+gpu-context=drm
+hwdec=no
+ao=alsa
+video-sync=audio
+framedrop=vo
+cache=yes
+demuxer-readahead-secs=10
