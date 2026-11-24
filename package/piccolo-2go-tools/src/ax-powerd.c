@@ -1,6 +1,7 @@
 // ax-powerd.c — Core 3 safe KEY_POWER, 75C thermal rollback & 3280mV battery guard for RK3326
 #define _GNU_SOURCE
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <linux/input.h>
 #include <poll.h>
@@ -10,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/reboot.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -54,22 +57,47 @@ static void enforce_safe_clock_1300(void) {
     }
 }
 
-static void run_cmd_best_effort(const char* cmd) {
-    int rc = system(cmd);
-    (void)rc;
+static void run_cmd_best_effort(char* const argv[]) {
+    pid_t pid = fork();
+    if (pid < 0) return;
+    if (pid == 0) {
+        int devnull = open("/dev/null", O_RDWR | O_CLOEXEC);
+        if (devnull >= 0) {
+            (void)dup2(devnull, STDIN_FILENO);
+            (void)dup2(devnull, STDOUT_FILENO);
+            (void)dup2(devnull, STDERR_FILENO);
+            if (devnull > STDERR_FILENO) close(devnull);
+        }
+        execvp(argv[0], argv);
+        _exit(127);
+    }
+    int status = 0;
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno != EINTR) break;
+    }
 }
 
 static void clean_poweroff(void) {
-    run_cmd_best_effort("pkill -USR1 -x flac_ax 2>/dev/null || true");
-    run_cmd_best_effort("pkill -TERM -x retroarch 2>/dev/null || true");
+    char* const stop_flac[] = {"pkill", "-USR1", "-x", "flac_ax", NULL};
+    char* const stop_ra[] = {"pkill", "-TERM", "-x", "retroarch", NULL};
+    char* const stop_storage[] = {"/etc/init.d/S02piccolo-2go-storage", "stop", NULL};
+
+    run_cmd_best_effort(stop_flac);
+    run_cmd_best_effort(stop_ra);
     usleep(250000);
     sync();
-    run_cmd_best_effort("/etc/init.d/S02piccolo-2go-storage stop 2>/dev/null || true");
+    run_cmd_best_effort(stop_storage);
     sync();
-    reboot(RB_POWER_OFF);
+    (void)reboot(RB_POWER_OFF);
+    _exit(0);
 }
 
 int main(void) {
+    if (geteuid() != 0) {
+        fprintf(stderr, "[ax-powerd] Must run as root\n");
+        return 1;
+    }
+
     setenv("PATH", "/usr/sbin:/usr/bin:/sbin:/bin", 1);
     signal(SIGINT, on_sig);
     signal(SIGTERM, on_sig);
