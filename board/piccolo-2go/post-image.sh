@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-BOARD_DIR="$(dirname "$0")"
+BOARD_DIR="$(cd "$(dirname "$0")" && pwd)"
 GENIMAGE_CFG="${BOARD_DIR}/genimage.cfg"
 GENIMAGE_TMP="${BUILD_DIR}/genimage.tmp"
 
