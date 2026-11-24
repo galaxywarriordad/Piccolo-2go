@@ -21,13 +21,21 @@ jobs:
 
       - name: Validate Shell Scripts, Packages & C Utilities
         run: |
-          shellcheck -x \
+          for script in \
             board/piccolo-2go/post-build.sh \
             board/piccolo-2go/post-image.sh \
             board/piccolo-2go/rootfs-overlay/etc/init.d/S01piccolo-2go-isolate \
             board/piccolo-2go/rootfs-overlay/etc/init.d/S02piccolo-2go-storage \
             board/piccolo-2go/rootfs-overlay/etc/init.d/S03piccolo-2go-powerd \
+            board/piccolo-2go/rootfs-overlay/etc/profile.d/ax-gpu.sh \
+            board/piccolo-2go/rootfs-overlay/usr/bin/ax-movie \
             board/piccolo-2go/rootfs-overlay/usr/sbin/ax-audio-route
+          do
+            if [ -f "$script" ]; then
+              sh -n "$script"
+              shellcheck -x "$script"
+            fi
+          done
           gcc -O2 -Wall -Wextra -Werror package/piccolo-2go-tools/src/dtb-select.c -o /tmp/dtb-select
           gcc -O2 -Wall -Wextra -Werror package/piccolo-2go-tools/src/ax-powerd.c -o /tmp/ax-powerd
           gcc -O2 -Wall -Wextra -Werror package/piccolo-2go-tools/src/ax-boot-recovery.c -o /tmp/ax-boot-recovery
@@ -35,7 +43,11 @@ jobs:
           test -f external.mk
           test -f Config.in
           test -f configs/piccolo_2go_rk3326_defconfig
+          test -f board/piccolo-2go/ax-2go.conf
+          test -f board/piccolo-2go/genimage.cfg
           test -f board/piccolo-2go/rootfs-overlay/etc/inittab
+          test -f board/piccolo-2go/rootfs-overlay/etc/mpv/mpv.conf
+          test -f board/piccolo-2go/rootfs-overlay/usr/bin/ax-movie
           test -f board/piccolo-2go/rootfs-overlay/etc/udev/rules.d/99-ax-2go-otg.rules
           test -f package/ax-sdk/Config.in
           test -f package/ax-sdk/ax-sdk.mk
@@ -64,7 +76,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential gcc g++ make binutils patch gzip bzip2 perl tar cpio \
             unzip rsync file bc wget git python3 libncurses-dev libssl-dev \
-            device-tree-compiler dosfstools mtools zip ca-certificates
+            device-tree-compiler dosfstools mtools squashfs-tools zip ca-certificates
 
       - name: Clone Buildroot
         run: |
@@ -78,11 +90,13 @@ jobs:
           cd buildroot
           make BR2_EXTERNAL="${GITHUB_WORKSPACE}/Piccolo-2go" piccolo_2go_rk3326_defconfig
           make -j"$(nproc)"
+          test -s output/images/sdcard.img
 
       - name: Package & Upload sdcard.img Artifact
         uses: actions/upload-artifact@v4
         with:
           name: piccolo-2go-rk3326-sdcard
           path: buildroot/output/images/sdcard.img
+          if-no-files-found: error
           compression-level: 6
           retention-days: 14
