@@ -4,8 +4,8 @@ set -eu
 
 ALSA_DEV="hw:CARD=rockchiprk817,DEV=0"
 if [ -r /run/ax/audio.env ]; then
-    # shellcheck disable=SC1091
-    . /run/ax/audio.env || true
+	# shellcheck disable=SC1091
+	. /run/ax/audio.env || true
 fi
 
 exec mpv --config-dir=/etc/mpv --ao=alsa --audio-device="alsa/${ALSA_DEV}" "$@"
