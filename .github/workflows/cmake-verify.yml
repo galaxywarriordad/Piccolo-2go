@@ -45,7 +45,7 @@ jobs:
           else
             FIXTURE_ROOT="/tmp/arkos4clone-fixture"
             CONSOLE_DIR="${FIXTURE_ROOT}/boot/dArkOS/consoles/${CONSOLE_NAME}"
-            mkdir -p "${CONSOLE_DIR}/6.12" "${FIXTURE_ROOT}/boot/dArkOS/consoles/logo/480P"
+            mkdir -p "${CONSOLE_DIR}" "${FIXTURE_ROOT}/boot/dArkOS/consoles/logo/480P"
             cat <<'EOF' > /tmp/sample-g350.dts
           /dts-v1/;
           / {
@@ -53,7 +53,7 @@ jobs:
               model = "Batlexp G350";
           };
           EOF
-            dtc -I dts -O dtb -o "${CONSOLE_DIR}/6.12/rk3326-g350-linux.dtb" /tmp/sample-g350.dts
+            dtc -I dts -O dtb -o "${CONSOLE_DIR}/rk3326-g350-linux.dtb" /tmp/sample-g350.dts
             printf 'setenv bootargs "loglevel=4"\n' > "${CONSOLE_DIR}/boot.ini"
             printf 'SPLASH_PLACEHOLDER\n' > "${FIXTURE_ROOT}/boot/dArkOS/consoles/logo/480P/logo.bmp"
             echo "dtb_src_dir=${FIXTURE_ROOT}" >> "$GITHUB_OUTPUT"
