@@ -14,20 +14,20 @@ struct DtbAlias {
 };
 
 static const struct DtbAlias kAliases[] = {
-    {"g350",             "rk3326-g350-linux.dtb"},
-    {"r36h",             "rk3326-r36h-linux.dtb"},
-    {"r46h",             "rk3326-r46h-linux.dtb"},
-    {"r36s-plus",        "rk3326-r36splus-linux.dtb"},
-    {"r36s-panel0",      "rk3326-r36s-panel0-linux.dtb"},
-    {"r36s-panel1",      "rk3326-r36s-panel1-linux.dtb"},
-    {"r36s-panel2",      "rk3326-r36s-panel2-linux.dtb"},
-    {"r36s-panel3",      "rk3326-r36s-panel3-linux.dtb"},
-    {"r36s-panel4",      "rk3326-r36s-panel4-type1-linux.dtb"},
-    {"r36s-panel4-t1",   "rk3326-r36s-panel4-type1-linux.dtb"},
-    {"r36s-panel4-t2",   "rk3326-r36s-panel4-type2-linux.dtb"},
-    {"r36s-v21",         "rk3326-r36s-v21-linux.dtb"},
-    {"r36s-pro",         "rk3326-r36pro-linux.dtb"},
-    {"r36s-xx",          "rk3326-r36xx-linux.dtb"},
+    {"g350", "rk3326-g350-linux.dtb"},
+    {"r36h", "rk3326-r36h-linux.dtb"},
+    {"r46h", "rk3326-r46h-linux.dtb"},
+    {"r36s-plus", "rk3326-r36splus-linux.dtb"},
+    {"r36s-panel0", "rk3326-r36s-panel0-linux.dtb"},
+    {"r36s-panel1", "rk3326-r36s-panel1-linux.dtb"},
+    {"r36s-panel2", "rk3326-r36s-panel2-linux.dtb"},
+    {"r36s-panel3", "rk3326-r36s-panel3-linux.dtb"},
+    {"r36s-panel4", "rk3326-r36s-panel4-type1-linux.dtb"},
+    {"r36s-panel4-t1", "rk3326-r36s-panel4-type1-linux.dtb"},
+    {"r36s-panel4-t2", "rk3326-r36s-panel4-type2-linux.dtb"},
+    {"r36s-v21", "rk3326-r36s-v21-linux.dtb"},
+    {"r36s-pro", "rk3326-r36pro-linux.dtb"},
+    {"r36s-xx", "rk3326-r36xx-linux.dtb"},
 };
 
 static int is_safe_filename(const char* name) {
@@ -36,11 +36,18 @@ static int is_safe_filename(const char* name) {
     return 1;
 }
 
-static int copy_file_sync(const char* src, const char* dst) {
+static int copy_file_sync_atomic(const char* src, const char* dst) {
     int in_fd = open(src, O_RDONLY | O_CLOEXEC);
     if (in_fd < 0) return -1;
 
-    int out_fd = open(dst, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+    char tmp_path[512];
+    int nwritten = snprintf(tmp_path, sizeof(tmp_path), "%s.tmp.%ld", dst, (long)getpid());
+    if (nwritten < 0 || (size_t)nwritten >= sizeof(tmp_path)) {
+        close(in_fd);
+        return -1;
+    }
+
+    int out_fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
     if (out_fd < 0) {
         close(in_fd);
         return -1;
@@ -55,16 +62,32 @@ static int copy_file_sync(const char* src, const char* dst) {
             if (w <= 0) {
                 close(in_fd);
                 close(out_fd);
+                unlink(tmp_path);
                 return -1;
             }
             off += w;
         }
     }
 
-    fsync(out_fd);
+    if (n < 0 || fsync(out_fd) != 0) {
+        close(in_fd);
+        close(out_fd);
+        unlink(tmp_path);
+        return -1;
+    }
+
     close(in_fd);
-    close(out_fd);
-    return (n < 0) ? -1 : 0;
+    if (close(out_fd) != 0) {
+        unlink(tmp_path);
+        return -1;
+    }
+
+    if (rename(tmp_path, dst) != 0) {
+        unlink(tmp_path);
+        return -1;
+    }
+
+    return 0;
 }
 
 int main(int argc, char** argv) {
@@ -121,7 +144,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (copy_file_sync(src_path, active_dtb) != 0) {
+    if (copy_file_sync_atomic(src_path, active_dtb) != 0) {
         fprintf(stderr, "[dtb-select] Failed to activate '%s': %s\n", src_path, strerror(errno));
         return 1;
     }
