@@ -35,4 +35,3 @@ source "$BR2_EXTERNAL_PICCOLO_2GO_PATH/package/flac-ax/Config.in"
 source "$BR2_EXTERNAL_PICCOLO_2GO_PATH/package/piccolo-2go-tools/Config.in"
 
 endmenu
-```[cite: 14]
