@@ -5,7 +5,6 @@ config BR2_PACKAGE_PICCOLO_2GO_BASE
 	default y
 	select BR2_PACKAGE_AX_SDK
 	select BR2_PACKAGE_FLAC_AX
-	select BR2_PACKAGE_FLAC_AX_APPLIANCE_TUI
 	select BR2_PACKAGE_RETROARCH
 	select BR2_PACKAGE_LIBRETRO_FBNEO
 	select BR2_PACKAGE_DTC
@@ -21,3 +20,18 @@ source "$BR2_EXTERNAL_PICCOLO_2GO_PATH/package/flac-ax/Config.in"
 source "$BR2_EXTERNAL_PICCOLO_2GO_PATH/package/piccolo-2go-tools/Config.in"
 
 endmenu
+```[cite: 14]
+
+And for quick reference, here again is the full `package/flac-ax/Config.in` file so both are side by side:
+
+```kconfig
+config BR2_PACKAGE_FLAC_AX
+	bool "FLAC_AX (Bit-Perfect S32_LE / DoP & Tracker Audio Engine)"
+	default y
+	select BR2_PACKAGE_AX_SDK
+	select BR2_PACKAGE_ALSA_LIB
+	select BR2_PACKAGE_FLAC
+	select BR2_PACKAGE_LIBOPENMPT
+	help
+	  Bit-perfect S32_LE / DoP audiophile transport and libopenmpt
+	  tracker jukebox tuned for early HiBy FC3 (1.3 Vrms) USB-C DACs.
